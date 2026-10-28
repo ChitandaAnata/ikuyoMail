@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ikuyoMail</title>
+<link rel="stylesheet" href="./styles.css">
+<link rel="icon" type="image/png" href="./icon-64.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <img class="brand-logo" src="./icon-192.png" alt="ikuyoMail" title="ikuyoMail">
+    </div>
+
+    <div class="account-area">
+      <div id="accountList" class="account-list"></div>
+      <button class="ghost-btn" id="addAccountBtn"><span>＋</span> 添加邮箱账号</button>
+    </div>
+
+    <div class="folders-wrap">
+      <div class="section-label">文件夹</div>
+      <nav class="folders" id="folders">
+        <div class="skeleton-row"></div><div class="skeleton-row"></div><div class="skeleton-row"></div>
+      </nav>
+    </div>
+
+    <div class="sidebar-foot">
+      <button class="foot-btn" id="settingsBtn" title="设置（账号、通知、外观）">
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm8.7 3.4c0 .5-.05 1-.13 1.5l2 1.55-1.9 3.3-2.4-.95c-.76.63-1.6 1.13-2.53 1.47L15.4 21h-3.8l-.34-2.56a7.9 7.9 0 0 1-2.53-1.47l-2.4.95-1.9-3.3 2-1.55a8.6 8.6 0 0 1 0-3l-2-1.55 1.9-3.3 2.4.95c.76-.63 1.6-1.13 2.53-1.47L11.6 3h3.8l.34 2.56c.93.34 1.77.84 2.53 1.47l2.4-.95 1.9 3.3-2 1.55c.08.5.13 1 .13 1.5Z" fill="currentColor"/></svg>
+        <span>设置</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="splitter" id="splitSide" role="separator" aria-orientation="vertical" tabindex="0"
+       title="拖动调整宽度 · 双击恢复默认"></div>
+
+  <section class="list-pane" id="listPane">
+    <header class="list-toolbar">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Zm6.7 10.2 4.1 4.1-1.4 1.4-4.1-4.1 1.4-1.4Z" fill="currentColor"/></svg>
+        <input id="searchInput" type="search" placeholder="搜索主题、发件人、收件人" autocomplete="off">
+      </div>
+      <button class="icon-btn" id="refreshBtn" title="刷新">
+        <svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 4a8 8 0 1 1-7.4 11H6.7A6 6 0 1 0 12 6a6 6 0 0 0-4.2 1.7L10 10H4V4l2.3 2.3A8 8 0 0 1 12 4Z" fill="currentColor"/></svg>
+      </button>
+      <button class="primary-btn small" id="composeBtn">写邮件</button>
+    </header>
+
+    <div class="list-head">
+      <div class="list-title">
+        <h2 id="folderTitle">收件箱</h2>
+        <span id="listCount" class="count-pill"></span>
+      </div>
+      <div class="filters" id="filters">
+        <button class="chip active" data-filter="all">全部</button>
+        <button class="chip" data-filter="unread">未读</button>
+        <button class="chip" data-filter="flagged">星标</button>
+        <button class="chip" data-filter="todo">待办</button>
+      </div>
+    </div>
+
+    <div class="sync-warn" id="syncWarn" hidden></div>
+    <div class="popout-bar" id="popoutBar" hidden>
+      <span>这封邮件正在独立窗口里显示</span>
+      <button class="link-btn" id="popoutBack">收回到主界面</button>
+    </div>
+    <div class="list-progress" id="listProgress" hidden>
+      <span class="lp-bar"><i></i></span>
+      <span class="lp-text" id="listProgressText"></span>
+    </div>
+
+    <div class="msg-list" id="msgList"></div>
+    <div class="pager" id="pager">
+      <button class="ghost-btn tiny" id="prevPage" disabled>上一页</button>
+      <div class="page-jump">
+        <span>第</span>
+        <input id="pageInput" class="page-input" type="text" inputmode="numeric" autocomplete="off"
+               value="1" aria-label="跳转到第几页" title="输入页码，回车跳转">
+        <span>/ <b id="pageTotal">1</b> 页</span>
+      </div>
+      <button class="ghost-btn tiny" id="nextPage" disabled>下一页</button>
+    </div>
+  </section>
+
+  <div class="splitter" id="splitList" role="separator" aria-orientation="vertical" tabindex="0"
+       title="拖动调整宽度 · 双击恢复默认"></div>
+
+  <section class="reader" id="reader">
+    <div class="welcome" id="welcome">
+      <div class="welcome-art">✉️</div>
+      <h1>一个邮箱，一处收拢</h1>
+      <p>添加 QQ、163、Gmail、Outlook 等任意支持 IMAP 的邮箱，<br>所有邮件都留在这台电脑上。</p>
+      <button class="primary-btn" onclick="document.getElementById('addAccountBtn').click()">添加第一个邮箱账号</button>
+      <div class="welcome-tips">
+        <span>🔒 授权码本地加密存储</span>
+        <span>🌐 邮件直连服务器，不经中转</span>
+        <span>📎 支持附件收发</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 添加账号 -->
+<div class="modal-backdrop" id="accountModal" hidden>
+  <div class="modal">
+    <header class="modal-head">
+      <h3>添加邮箱账号</h3>
+      <button class="icon-btn" data-close="accountModal">✕</button>
+    </header>
+    <div class="modal-body">
+      <label class="field">
+        <span>邮箱地址</span>
+        <div class="email-split">
+          <input id="accLocal" autocomplete="off" spellcheck="false" placeholder="用户名">
+          <span class="at-sep">@</span>
+          <input id="accDomain" autocomplete="off" spellcheck="false" placeholder="选择下方服务商后自动填入">
+        </div>
+      </label>
+
+      <label class="field">
+        <span>邮箱服务商</span>
+        <select id="accProvider" class="select"></select>
+      </label>
+
+      <div class="hint-card" id="authHint">
+        <div class="hint-title">填写提示</div>
+        <p id="hintText">输入邮箱地址后，会自动匹配服务商并给出登录说明。</p>
+      </div>
+
+      <label class="field">
+        <span id="passLabel">密码 / 授权码</span>
+        <input id="accPass" type="password" placeholder="建议使用授权码" autocomplete="new-password">
+      </label>
+      <label class="field">
+        <span>显示名称 <em>可选</em></span>
+        <input id="accName" type="text" placeholder="发信时展示的名字">
+      </label>
+
+      <details class="advanced">
+        <summary>高级：自定义服务器</summary>
+        <div class="grid2">
+          <label class="field"><span>IMAP 主机</span><input id="imapHost" placeholder="imap.example.com"></label>
+          <label class="field"><span>IMAP 端口</span><input id="imapPort" placeholder="993"></label>
+          <label class="field"><span>SMTP 主机</span><input id="smtpHost" placeholder="smtp.example.com"></label>
+          <label class="field"><span>SMTP 端口</span><input id="smtpPort" placeholder="465"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="imapCert"> 忽略 IMAP 证书错误</label>
+        <label class="check"><input type="checkbox" id="smtpCert"> 忽略 SMTP 证书错误</label>
+      </details>
+
+      <details class="advanced" id="proxyDetails">
+        <summary>代理服务器 <em>可选</em></summary>
+        <p class="adv-tip">只对这个账号生效。适合邮箱服务商在本地网络无法直连的情况（例如 Gmail、Outlook）。</p>
+        <div class="grid2">
+          <label class="field">
+            <span>协议</span>
+            <select id="proxyType" class="select">
+              <option value="socks5">SOCKS5</option>
+              <option value="socks4">SOCKS4</option>
+              <option value="http">HTTP</option>
+              <option value="https">HTTPS</option>
+            </select>
+          </label>
+          <label class="field"><span>端口</span><input id="proxyPort" placeholder="1080" inputmode="numeric"></label>
+        </div>
+        <label class="field"><span>主机</span><input id="proxyHost" placeholder="127.0.0.1 或 proxy.example.com" autocomplete="off"></label>
+        <div class="grid-pair">
+          <label class="field"><span>用户名 <em>可选</em></span><input id="proxyUser" autocomplete="off"></label>
+          <label class="field"><span>密码 <em>可选</em></span><input id="proxyPass" type="password" autocomplete="new-password" placeholder="留空表示沿用已保存的"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="proxyEnabled"> 启用代理</label>
+        <p class="adv-tip warn" id="proxyWarn" hidden></p>
+      </details>
+
+      <div class="diag-box" id="diagBox" hidden>
+        <div class="diag-head">
+          <span>连接诊断</span>
+          <button class="link-btn" id="diagBtn">开始检查</button>
+        </div>
+        <pre class="diag-out" id="diagOut" hidden></pre>
+      </div>
+
+      <div class="modal-error" id="accountError" hidden></div>
+    </div>
+    <footer class="modal-foot">
+      <button class="ghost-btn danger" id="deleteAccountBtn" hidden>删除账号</button>
+      <span class="foot-spacer"></span>
+      <button class="ghost-btn" data-close="accountModal">取消</button>
+      <button class="primary-btn" id="saveAccountBtn">验证并登录</button>
+    </footer>
+  </div>
+</div>
+
+<!-- 写邮件 -->
+<div class="modal-backdrop" id="composeModal" hidden>
+  <div class="modal compose">
+    <header class="modal-head">
+      <h3 id="composeTitle">写邮件</h3>
+      <button class="icon-btn" data-close="composeModal">✕</button>
+    </header>
+    <div class="modal-body compose-body">
+      <div class="compose-field"><span>发件人</span><b id="composeFrom">—</b></div>
+      <div class="compose-field"><span>收件人</span>
+        <div class="addr-wrap">
+          <input id="composeTo" placeholder="多个地址用逗号分隔" autocomplete="off">
+          <div class="addr-suggest" id="toSuggest" hidden></div>
+        </div>
+      </div>
+      <div class="compose-field cc-row" id="ccRow" hidden><span>抄送</span>
+        <div class="addr-wrap">
+          <input id="composeCc" placeholder="cc@example.com" autocomplete="off">
+          <div class="addr-suggest" id="ccSuggest" hidden></div>
+        </div>
+      </div>
+      <div class="cc-toggle"><button class="link-btn" id="toggleCc">添加抄送/密送</button></div>
+      <div class="compose-field bcc-row" id="bccRow" hidden><span>密送</span>
+        <div class="addr-wrap">
+          <input id="composeBcc" placeholder="bcc@example.com" autocomplete="off">
+          <div class="addr-suggest" id="bccSuggest" hidden></div>
+        </div>
+      </div>
+      <div class="compose-field"><span>主题</span><input id="composeSubject" placeholder="邮件主题"></div>
+
+      <div class="editor-toolbar" id="editorToolbar">
+        <button type="button" data-cmd="bold" title="加粗"><b>B</b></button>
+        <button type="button" data-cmd="italic" title="斜体"><i>I</i></button>
+        <button type="button" data-cmd="underline" title="下划线"><u>U</u></button>
+        <button type="button" data-cmd="strikeThrough" title="删除线"><s>S</s></button>
+        <span class="tb-sep"></span>
+        <button type="button" data-cmd="insertUnorderedList" title="无序列表">•&nbsp;列表</button>
+        <button type="button" data-cmd="insertOrderedList" title="有序列表">1.&nbsp;列表</button>
+        <button type="button" data-cmd="blockquote" title="引用原文">引用</button>
+        <button type="button" data-cmd="createLink" title="插入链接">链接</button>
+        <span class="tb-sep"></span>
+        <button type="button" data-cmd="removeFormat" title="清除格式">清除格式</button>
+      </div>
+      <div class="compose-editor" id="composeEditor" contenteditable="true" data-placeholder="写点什么…"></div>
+
+      <div class="attach-list" id="attachList"></div>
+      <div class="compose-error" id="composeError" hidden></div>
+    </div>
+    <footer class="modal-foot">
+      <div class="foot-left">
+        <label class="ghost-btn tiny file-label">
+          📎 添加附件
+          <input type="file" id="attachInput" multiple hidden>
+        </label>
+      </div>
+      <button class="primary-btn" id="sendBtn">发送</button>
+    </footer>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div class="modal-backdrop" id="settingsModal" hidden>
+  <div class="modal settings">
+    <header class="modal-head">
+      <h3>设置</h3>
+      <button class="icon-btn" data-close="settingsModal">✕</button>
+    </header>
+    <div class="modal-body">
+      <section class="set-group">
+        <div class="set-title">阅读</div>
+        <div class="set-row">
+          <div class="set-label">
+            <b>邮件正文里的外部图片</b>
+            <span>很多营销邮件用远程图片追踪你何时打开</span>
+          </div>
+          <div class="seg" id="setImagePolicy">
+            <button type="button" data-val="block">默认拦截</button>
+            <button type="button" data-val="allow">默认显示</button>
+          </div>
+        </div>
+        <p class="set-tip" id="imagePolicyTip"></p>
+      </section>
+
+      <section class="set-group">
+        <div class="set-title">新邮件提醒</div>
+        <label class="set-switch">
+          <input type="checkbox" id="setNotify">
+          <span>收到新邮件时提醒我</span>
+        </label>
+
+        <div class="set-sub" id="notifySub">
+          <label class="set-switch">
+            <input type="checkbox" id="setSound">
+            <span>播放提示音</span>
+          </label>
+          <label class="set-switch">
+            <input type="checkbox" id="setDesktop">
+            <span>窗口不在前台时，弹系统通知（屏幕右下角）</span>
+          </label>
+
+          <div class="set-row">
+            <div class="set-label">
+              <b>检查间隔</b>
+              <span>越短越及时，但对服务器更频繁</span>
+            </div>
+            <select id="setInterval" class="select compact">
+              <option value="30">30 秒</option>
+              <option value="60">1 分钟</option>
+              <option value="120">2 分钟</option>
+              <option value="300">5 分钟</option>
+              <option value="600">10 分钟</option>
+              <option value="1800">30 分钟</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="set-actions">
+          <button class="ghost-btn tiny" id="testNotifyBtn">发一条测试提醒</button>
+          <span class="set-inline-tip" id="notifyTestTip"></span>
+        </div>
+      </section>
+
+      <section class="set-group">
+        <div class="set-title">关闭行为</div>
+        <div class="set-row">
+          <div class="set-label">
+            <b>关闭窗口时</b>
+            <span>决定关掉窗口后程序是否继续在后台收信</span>
+          </div>
+          <div class="seg" id="setCloseAction">
+            <button type="button" data-val="tray">最小化到状态栏</button>
+            <button type="button" data-val="quit">退出程序</button>
+          </div>
+        </div>
+        <label class="set-switch">
+          <input type="checkbox" id="setTray">
+          <span>显示托盘图标（通知区域的 ikuyoMail 图标）</span>
+        </label>
+        <p class="set-tip" id="closeTip"></p>
+      </section>
+
+      <section class="set-group">
+        <div class="set-title">启动</div>
+        <label class="set-switch">
+          <input type="checkbox" id="setAutoStart">
+          <span>开机时自动启动 ikuyoMail</span>
+        </label>
+        <p class="set-tip" id="autoStartTip"></p>
+      </section>
+
+      <div class="set-status" id="setStatus"></div>
+    </div>
+    <footer class="modal-foot">
+      <span class="app-ver" id="appVer">ikuyoMail <b>V1.0.0</b></span>
+      <button class="primary-btn" data-close="settingsModal">完成</button>
+    </footer>
+  </div>
+</div>
+
+<div class="notify-wrap" id="notifyWrap"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- 邮件列表的右键菜单 -->
+<div class="ctx-menu" id="ctxMenu" hidden role="menu"></div>
+
+<!-- 备注 -->
+<div class="modal-backdrop" id="noteModal" hidden>
+  <div class="modal note-modal">
+    <header class="modal-head">
+      <h3 id="noteTitle">设置备注</h3>
+      <button class="icon-btn" data-close="noteModal">✕</button>
+    </header>
+    <div class="modal-body">
+      <p class="note-subject" id="noteSubject"></p>
+      <textarea id="noteInput" class="note-input" maxlength="2000" placeholder="给这封邮件写一句备注，比如「等他回复报价」"></textarea>
+      <div class="note-tip" id="noteTip"></div>
+    </div>
+    <footer class="modal-foot">
+      <button class="ghost-btn danger" id="noteClearBtn">清除备注</button>
+      <span class="foot-spacer"></span>
+      <button class="ghost-btn" data-close="noteModal">取消</button>
+      <button class="primary-btn" id="noteSaveBtn">保存</button>
+    </footer>
+  </div>
+</div>
+
+<!-- 窗口窄到三块都到下限时才会出现（正常情况下桌面外壳会直接拦住窗口） -->
+<div class="narrow-hint" id="narrowHint" role="status">
+  <span>窗口已到最窄，正文排不开了</span>
+  <button id="narrowCollapse">收起阅读区</button>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>

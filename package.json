@@ -1,0 +1,26 @@
+{
+  "name": "ikuyomail",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ikuyoMail —— 本地运行的通用邮箱客户端，支持 QQ / 163 / Gmail / Outlook 等主流邮箱（IMAP + SMTP）",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "demo": "node src/demo.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "iconv-lite": "^0.6.3",
+    "imapflow": "^1.0.164",
+    "mailparser": "^3.7.1",
+    "nodemailer": "^6.9.14"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

@@ -1,0 +1,17 @@
+node_modules/
+data/
+shots/
+scripts/e2e-result.txt
+*.log
+.DS_Store
+build/
+installer/payload.zip
+installer/bin/
+installer/obj/
+desktop/bin/
+desktop/obj/
+ikuyoMail-Setup-*.exe
+dist/
+ikuyoMail.exe
+WebView2Loader.dll
+dist/

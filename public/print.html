@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<!-- 只排版这一封邮件：邮件自带的脚本一律不许执行，样式/图片照常显示 -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src * data: blob:; style-src 'self' 'unsafe-inline'; font-src * data:; script-src 'self'; object-src 'none'; frame-src 'none';">
+<title>邮件 PDF</title>
+<style>
+  /* 纸张边距与外壳里的 PrintToPdf 设置保持一致（约 9mm） */
+  @page { size: A4; margin: 9mm; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: #fff; color: #16181d;
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+    font-size: 12.5pt; line-height: 1.75;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .doc { padding: 2mm 2mm 6mm; max-width: 190mm; margin: 0 auto; }
+  h1.subject {
+    font-size: 17pt; line-height: 1.35; font-weight: 650;
+    margin: 0 0 10px; word-break: break-word;
+  }
+  .meta { border-collapse: collapse; font-size: 9.5pt; color: #5a6070; width: 100%; }
+  .meta th {
+    text-align: left; font-weight: 500; color: #8b91a1;
+    width: 16mm; padding: 1.5px 0; vertical-align: top; white-space: nowrap;
+  }
+  .meta td { padding: 1.5px 0; word-break: break-word; }
+  .rule { height: 1px; background: #e2e5ec; margin: 11px 0 13px; }
+  .note {
+    display: flex; gap: 6px; margin: 0 0 12px; padding: 7px 10px;
+    background: #fffaf0; border: 1px solid #f0e0c2; border-radius: 5px;
+    font-size: 9.5pt; color: #7b5c22; line-height: 1.6; white-space: pre-wrap;
+  }
+  .body { word-break: break-word; }
+  .body img { max-width: 100%; height: auto; }
+  .body a { color: #2f55c8; text-decoration: none; }
+  .body table { max-width: 100%; border-collapse: collapse; }
+  .body pre { white-space: pre-wrap; word-break: break-word; font-family: inherit; }
+  .body blockquote {
+    margin: 0 0 0 2px; padding: 0 0 0 11px;
+    border-left: 3px solid #e2e5ec; color: #545b6b;
+  }
+  .plain { white-space: pre-wrap; word-break: break-word; margin: 0; font-family: inherit; }
+  .atts { margin-top: 16px; padding-top: 9px; border-top: 1px dashed #dfe3ea; }
+  .atts h2 { font-size: 9.5pt; color: #8b91a1; font-weight: 600; margin: 0 0 5px; letter-spacing: .3px; }
+  .atts ul { margin: 0; padding-left: 16px; font-size: 10pt; color: #3d4353; }
+  .atts li { margin: 1px 0; }
+  .status { padding: 28px 6mm; color: #8b91a1; font-size: 11pt; }
+  /* 打印时避免把一个小块从中间劈开 */
+  .body img, .body table, .body blockquote { break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="doc" id="doc">
+  <h1 class="subject" id="pSubject"></h1>
+  <table class="meta">
+    <tr><th>发件人</th><td id="pFrom"></td></tr>
+    <tr><th>收件人</th><td id="pTo"></td></tr>
+    <tr id="pCcRow" hidden><th>抄送</th><td id="pCc"></td></tr>
+    <tr><th>时间</th><td id="pDate"></td></tr>
+  </table>
+  <div class="rule"></div>
+  <div class="note" id="pNote" hidden></div>
+  <article class="body" id="pBody"></article>
+  <section class="atts" id="pAtts" hidden>
+    <h2>附件</h2>
+    <ul id="pAttList"></ul>
+  </section>
+</div>
+<div class="status" id="pStatus" hidden></div>
+<script src="./print.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>ikuyoMail</AssemblyName>
+    <RootNamespace>ikuyoMail</RootNamespace>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Product>ikuyoMail</Product>
+    <Company>ikuyoMail</Company>
+    <AssemblyTitle>ikuyoMail</AssemblyTitle>
+    <Description>本地运行的通用邮箱客户端</Description>
+    <Copyright>© 2026 ikuyoMail</Copyright>
+    <ApplicationIcon>..\assets\ikuyoMail.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
+  </ItemGroup>
+  <!-- 卸载窗口和安装程序用同一套扁平控件，直接链接安装程序的源文件，省得复制一份 -->
+  <ItemGroup>
+    <Compile Include="..\installer\Theme.cs" Link="Shared\Theme.cs" />
+    <Compile Include="..\installer\Controls.cs" Link="Shared\Controls.cs" />
+  </ItemGroup>
+</Project>

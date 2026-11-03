@@ -1,6 +1,6 @@
 {
   "name": "ikuyomail",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "ikuyoMail —— 本地运行的通用邮箱客户端，支持 QQ / 163 / Gmail / Outlook 等主流邮箱（IMAP + SMTP）",
   "type": "module",

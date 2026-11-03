@@ -51,7 +51,7 @@ npm run demo     # http://127.0.0.1:7318
 - **独立阅读窗口**：把这封邮件弹到单独窗口，主界面只剩两栏；关掉独立窗口自动回到三栏，并回到你最后看的那封
 - **贴边抽屉**：主窗口贴着屏幕顶部时，鼠标移开就向上收起只剩一条边，鼠标移到顶部边缘再滑出（Windows；双击 bat 启动时生效）
 - 快捷键：`C` 写邮件，`R` 刷新，`F9` 收起/展开阅读区，`Esc` 关闭弹窗
-- 设置面板左下角显示当前版本（第一版是 `V1.0.0`）
+- 设置面板左下角显示当前版本（第一版是 `V1.0.1`）
 - 三块各有硬下限（账号栏 190 / 列表 340 / 阅读区 440）：窗口变窄时依次压缩，碰到谁的下限就轮到下一块，全到下限后窗口就缩不动了——任何宽度下都不会把内容藏到视口外面
 
 ## 邮件列表右键菜单
@@ -184,12 +184,12 @@ ikuyoMail.exe --pdf-test="http://127.0.0.1:7317/print.html?acc=<账号id>&folder
 
 ## 安装包（分发给别人）
 
-`ikuyoMail-Setup-1.0.0.exe`（约 126 MB）是给「没装 Node、也没装 .NET」的人用的安装程序：
+`ikuyoMail-Setup-1.0.1.exe`（约 126 MB）是给「没装 Node、也没装 .NET」的人用的安装程序：
 
 - **界面**：左边是插画和版本号，右边填安装位置、勾桌面快捷方式，一个按钮装完；配色跟程序本体一致（主色取自插画里的红），无边框圆角窗口。
 - **装在哪**：默认 `%LOCALAPPDATA%\Programs\ikuyoMail`，装到当前用户，**不需要管理员权限**；装机位置可以改。选目录时总会落在其下的 `ikuyoMail` 文件夹里（选 `H://` → `H://ikuyoMail`，选 `H://Apps` → `H://Apps//ikuyoMail`；已经选中 `ikuyoMail` 就不再套一层）。
 - **装了什么**：自包含的 `ikuyoMail.exe`（不依赖 .NET 运行时）、`Uninstall.exe`（`ikuyoMail.exe` 的硬链接，双击就能卸载）、`runtime\node.exe`、生产依赖、`src` / `public` / `assets`。
-- **顺带做了**：桌面 + 开始菜单快捷方式、开始菜单里的「卸载 ikuyoMail」、写入「设置 → 应用 → 已安装的应用」（版本 1.0.0，卸载命令指向安装目录里的 `Uninstall.exe`）。
+- **顺带做了**：桌面 + 开始菜单快捷方式、开始菜单里的「卸载 ikuyoMail」、写入「设置 → 应用 → 已安装的应用」（版本 1.0.1，卸载命令指向安装目录里的 `Uninstall.exe`）。
 - 没检测到 WebView2 运行时的话，界面上会直接给下载链接（Win11 和大部分 Win10 自带）。
 
 ### 卸载
@@ -216,7 +216,7 @@ SKIP_PAYLOAD=1 node scripts/build-setup.mjs    # 只改安装界面时用，跳�
 静默安装 / 卸载（脚本用，也可以自己试）：
 
 ```bash
-ikuyoMail-Setup-1.0.0.exe /S --dir=D://Apps --log=%TEMP%\setup.log   # 退出码 0 = 成功；装在 D://Apps//ikuyoMail
+ikuyoMail-Setup-1.0.1.exe /S --dir=D://Apps --log=%TEMP%\setup.log   # 退出码 0 = 成功；装在 D://Apps//ikuyoMail
 Uninstall.exe                      # 带界面的卸载
 Uninstall.exe /S                   # 静默卸载，保留 data
 Uninstall.exe /S --purge           # 静默卸载，连账号数据一起删
@@ -227,11 +227,11 @@ Uninstall.exe /S --purge           # 静默卸载，连账号数据一起删
 安装界面可以单独出图核对（不装任何东西）：
 
 ```bash
-ikuyoMail-Setup-1.0.0.exe --shot=shots/setup/ready.png
-ikuyoMail-Setup-1.0.0.exe --shot=shots/setup/installing.png --step=installing
+ikuyoMail-Setup-1.0.1.exe --shot=shots/setup/ready.png
+ikuyoMail-Setup-1.0.1.exe --shot=shots/setup/installing.png --step=installing
 
 # 路径规整规则（只回显，不装东西）
-ikuyoMail-Setup-1.0.0.exe --path-test=H://          # → H://ikuyoMail
+ikuyoMail-Setup-1.0.1.exe --path-test=H://          # → H://ikuyoMail
 
 # 卸载窗口的状态图（程序本体自带，不删任何东西）
 ikuyoMail.exe --uninstall-shot=shots/uninstall/confirm.png
@@ -408,7 +408,7 @@ SOCKS5 + SMTP      → 认证通过
 mailbox/
 ├── ikuyoMail.exe       原生窗口程序（双击就用，见「打包成 exe」）
 ├── WebView2Loader.dll  exe 的 WebView2 加载器，不能删
-├── ikuyoMail-Setup-1.0.0.exe  安装程序（发给别人用这个）
+├── ikuyoMail-Setup-1.0.1.exe  安装程序（发给别人用这个）
 ├── 启动 ikuyoMail.bat   没有 exe 时的退路：Chrome --app 窗口
 ├── desktop/
 │   ├── ikuyoMail.csproj  WinForms + WebView2 项目

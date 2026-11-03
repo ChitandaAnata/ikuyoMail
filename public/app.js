@@ -1792,6 +1792,9 @@ function renderAttachList() {
 function openAccountModal(mode = 'create', acc = null) {
   state.accountMode = mode;
   state.editingId = mode === 'edit' && acc ? acc.id : null;
+  state.editingAccount = acc;
+  state.googleLoginId = null;
+  state.googleAuthorized = false;
   const isEdit = state.accountMode === 'edit';
   state.editEmail = isEdit && acc ? acc.email : '';
 
@@ -1852,6 +1855,7 @@ function openAccountModal(mode = 'create', acc = null) {
   }
 
   openModal('accountModal');
+  refreshGoogleStatus().then(() => syncGoogleBlock());
   setTimeout(() => (isEdit ? $('#accName') : $('#accLocal')).focus(), 60);
 }
 
@@ -1986,6 +1990,130 @@ function applyProviderOption(key, { keepDomain = false } = {}) {
   } else {
     ['#imapHost', '#imapPort', '#smtpHost', '#smtpPort'].forEach((s) => ($(s).value = ''));
   }
+  syncGoogleBlock();
+}
+
+/* ---------------- Gmail OAuth 登录 ---------------- */
+
+async function refreshGoogleStatus() {
+  state.googleConfigured = false;
+  try {
+    const out = await api('/google/oauth/status');
+    state.googleConfigured = !!out.configured;
+  } catch {
+    /* demo 模式没有这个接口 */
+  }
+}
+
+/** Gmail 走 OAuth，密码栏整个藏起来，换成授权按钮 */
+function syncGoogleBlock() {
+  const isEdit = state.accountMode === 'edit';
+  const acc = state.editingAccount;
+  const relevant = isEdit
+    ? acc?.authType === 'oauth2'
+    : state.provider === 'gmail';
+  $('#googleBlock').hidden = !relevant;
+  $('#passField').hidden = relevant;
+  if (!relevant) return;
+
+  const btn = $('#googleLoginBtn');
+  const status = $('#googleStatus');
+  status.hidden = true;
+  status.className = 'google-status';
+  $('#googleConfigDetails').open = !state.googleConfigured;
+  btn.disabled = !state.googleConfigured;
+  btn.textContent = isEdit ? '重新登录 Google 账号' : '使用 Google 账号登录';
+  if (!state.googleConfigured) {
+    status.hidden = false;
+    status.textContent = '首次使用需要先在下方填入 Google 客户端凭据（只存本机）。';
+  }
+}
+
+function setGoogleStatus(text, kind = '') {
+  const el = $('#googleStatus');
+  el.hidden = !text;
+  el.textContent = text;
+  el.className = 'google-status' + (kind ? ' ' + kind : '');
+}
+
+async function startGoogleLogin() {
+  const isEdit = state.accountMode === 'edit';
+  const local = $('#accLocal').value.trim();
+  const domain = $('#accDomain').value.trim().replace(/^@+/, '');
+  const email = isEdit ? state.editEmail : local && domain ? `${local}@${domain}` : '';
+  if (!email) {
+    showAccountError('先填好邮箱地址，再点 Google 登录');
+    return;
+  }
+  if (!state.googleConfigured) {
+    $('#googleConfigDetails').open = true;
+    showAccountError('先填入 Google 客户端凭据并保存');
+    return;
+  }
+
+  const btn = $('#googleLoginBtn');
+  btn.disabled = true;
+  setGoogleStatus('正在向 Google 发起授权…');
+  try {
+    const start = await api('/google/oauth/login', { method: 'POST', body: { email } });
+    state.googleLoginId = start.loginId;
+    const win = window.open(start.authUrl, '_blank');
+    if (!win) setGoogleStatus('浏览器没弹出来？把这个链接复制到浏览器打开：' + start.authUrl);
+
+    // 轮询等 Google 回调（最长 5 分钟）
+    const deadline = Date.now() + 5 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const st = await api(`/google/oauth/login/${start.loginId}`);
+      if (st.status === 'done') {
+        state.googleAuthorized = true;
+        if (isEdit) {
+          setGoogleStatus('重新授权成功，正在验证连接…', 'ok');
+          const out = await api(`/accounts/${state.editingId}/test`, { method: 'POST' });
+          btn.disabled = false;
+          btn.textContent = '重新登录 Google 账号';
+          toast(out.imap ? 'Google 重新授权成功' : '授权成功，但连接验证没过：' + (out.error || ''), out.imap ? 'success' : 'error');
+          if (out.imap) closeModal('accountModal');
+        } else {
+          setGoogleStatus('授权成功，正在保存账号…', 'ok');
+          await saveAccount();
+        }
+        return;
+      }
+      if (st.status === 'error') {
+        setGoogleStatus(st.error || '授权没有完成', 'err');
+        btn.disabled = false;
+        btn.textContent = isEdit ? '重新登录 Google 账号' : '使用 Google 账号登录';
+        return;
+      }
+    }
+    setGoogleStatus('等待授权超时，请重试', 'err');
+    btn.disabled = false;
+  } catch (err) {
+    setGoogleStatus(err.message, 'err');
+    btn.disabled = false;
+    btn.textContent = isEdit ? '重新登录 Google 账号' : '使用 Google 账号登录';
+  }
+}
+
+async function saveGoogleConfig() {
+  const clientId = $('#googleClientId').value.trim();
+  const clientSecret = $('#googleClientSecret').value.trim();
+  if (!clientId || !clientSecret) {
+    setGoogleStatus('Client ID 和 Client Secret 都要填', 'err');
+    return;
+  }
+  try {
+    await api('/google/oauth/config', { method: 'POST', body: { clientId, clientSecret } });
+    state.googleConfigured = true;
+    $('#googleClientId').value = '';
+    $('#googleClientSecret').value = '';
+    $('#googleConfigDetails').open = false;
+    setGoogleStatus('凭据已保存，可以点上面的登录按钮了', 'ok');
+    $('#googleLoginBtn').disabled = false;
+  } catch (err) {
+    setGoogleStatus(err.message, 'err');
+  }
 }
 
 /** 根据已有邮箱反查下拉项（编辑账号时用） */
@@ -2031,6 +2159,7 @@ async function saveAccount() {
   const btn = $('#saveAccountBtn');
   const errBox = $('#accountError');
   const isEdit = state.accountMode === 'edit';
+  const isGmailOauth = !isEdit && state.provider === 'gmail';
   const local = $('#accLocal').value.trim();
   const domain = $('#accDomain').value.trim().replace(/^@+/, '');
   const pass = $('#accPass').value;
@@ -2042,7 +2171,11 @@ async function saveAccount() {
     if (/[\s@]/.test(local)) return showAccountError('用户名里不能有空格或 @');
     if (/[\s@]/.test(domain)) return showAccountError('域名里不能有空格或 @');
     if (!/^[^\s@]+\.[^\s@]+$/.test(domain)) return showAccountError('域名格式看起来不对，例如 qq.com');
-    if (!pass) return showAccountError('请填写密码或授权码');
+    if (isGmailOauth) {
+      if (!state.googleAuthorized) return showAccountError('请先点「使用 Google 账号登录」完成授权');
+    } else if (!pass) {
+      return showAccountError('请填写密码或授权码');
+    }
   }
   if ((state.provider === 'custom' || isEdit) && (!$('#imapHost').value.trim() || !$('#smtpHost').value.trim())) {
     return showAccountError('需要填写 IMAP 与 SMTP 服务器地址');
@@ -2092,6 +2225,12 @@ async function saveAccount() {
         ...servers,
         proxy,
       };
+      if (isGmailOauth) {
+        // Gmail 走 OAuth：没有密码，令牌在授权回调时已存本机
+        payload.authType = 'oauth2';
+        payload.loginId = state.googleLoginId;
+        payload.pass = '';
+      }
       const out = await api('/accounts', { method: 'POST', body: payload });
       closeModal('accountModal');
       toast('登录成功，正在同步邮件…', 'success');
@@ -2612,6 +2751,10 @@ $('#accDomain').addEventListener('input', (e) => {
     applyProviderOption(opt.key, { keepDomain: true });
   }
 });
+
+// Gmail OAuth：登录按钮与凭据保存
+$('#googleLoginBtn').onclick = startGoogleLogin;
+$('#googleConfigSave').onclick = saveGoogleConfig;
 
 // 切换代理协议时同步默认端口（用户手动改过的端口不会被覆盖）
 const defaultProxyPort = (t) => (t === 'http' || t === 'https' ? 8080 : 1080);

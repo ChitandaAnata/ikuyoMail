@@ -131,7 +131,23 @@
         <p id="hintText">输入邮箱地址后，会自动匹配服务商并给出登录说明。</p>
       </div>
 
-      <label class="field">
+      <div id="googleBlock" hidden>
+        <div class="hint-card google-card">
+          <div class="hint-title">Gmail 要用 Google 授权登录</div>
+          <p class="google-text">Google 已于 2025 年停用「账号 + 密码」的第三方登录，点下面的按钮跳转 Google 官方页面授权，不用输密码。</p>
+          <button class="primary-btn" id="googleLoginBtn" type="button">使用 Google 账号登录</button>
+          <p class="google-status" id="googleStatus" hidden></p>
+          <details class="google-config" id="googleConfigDetails">
+            <summary>首次使用：填入 Google 客户端凭据（Client ID / Secret）</summary>
+            <label class="field"><span>Client ID</span><input id="googleClientId" autocomplete="off" spellcheck="false" placeholder="xxxx.apps.googleusercontent.com"></label>
+            <label class="field"><span>Client Secret</span><input id="googleClientSecret" type="password" autocomplete="off" placeholder="GOCSPX-…"></label>
+            <button class="ghost-btn" id="googleConfigSave" type="button">保存凭据</button>
+            <p class="adv-tip">凭据在 Google Cloud Console「APIs &amp; Services → Credentials」里创建，类型选 Desktop app。只存在本机。</p>
+          </details>
+        </div>
+      </div>
+
+      <label class="field" id="passField">
         <span id="passLabel">密码 / 授权码</span>
         <input id="accPass" type="password" placeholder="建议使用授权码" autocomplete="new-password">
       </label>

@@ -63,10 +63,10 @@ export const PROVIDERS = {
     domain: 'gmail.com',
     imap: { host: 'imap.gmail.com', port: 993, secure: true },
     smtp: { host: 'smtp.gmail.com', port: 465, secure: true },
-    authType: 'authcode',
-    hint: 'Gmail 需要两步验证后生成的「应用专用密码」。',
+    authType: 'oauth2',
+    hint: 'Gmail 已停止密码登录，改用 Google 官方授权。',
     help:
-      'Google 账号 → 安全性 → 开启两步验证 → 应用专用密码 → 生成一个（选「邮件 / Windows 计算机」）。密码处填这 16 位密码。需能直连 Google（网络通畅）。',
+      '点「使用 Google 账号登录」，在弹出的 Google 页面里点「允许」即可，全程不用输密码。首次使用需在下方填入 Google Cloud 的客户端凭据。',
   },
   outlook: {
     id: 'outlook',

@@ -1,5 +1,6 @@
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
+import * as goauth from './goauth.js';
 import socksPkg from 'socks';
 import { simpleParser } from 'mailparser';
 import { recordContacts } from './store.js';
@@ -34,12 +35,19 @@ const IDLE_MS = 2 * 60 * 1000;
  */
 const MAX_CONN_MS = 10 * 60 * 1000;
 
+function smtpAuth(acc) {
+  // Gmail 这类 OAuth 账号用 XOAUTH2；密码账号照旧
+  return acc.authType === 'oauth2'
+    ? { type: 'OAuth2', user: acc.username || acc.email, accessToken: acc.oauthAccessToken }
+    : { user: acc.username || acc.email, pass: acc.pass };
+}
+
 function makeClient(acc) {
   const client = new ImapFlow({
     host: acc.imap.host,
     port: Number(acc.imap.port) || 993,
     secure: acc.imap.secure !== false,
-    auth: { user: acc.username || acc.email, pass: acc.pass },
+    auth: smtpAuth(acc),
     // 走代理时不解析本地 DNS，由代理解析目标域名（socks5 默认行为）
     proxy: toProxyUrl(acc.proxy) || undefined,
     logger: false,
@@ -75,6 +83,10 @@ async function getEntry(acc, { fresh = false } = {}) {
   const aged = entry && entry.bornAt && Date.now() - entry.bornAt > MAX_CONN_MS;
   if (!isHealthy(entry) || aged) {
     if (entry) dropConnection(acc.id);
+    // OAuth 账号在每次建立连接前确保令牌新鲜（提前 2 分钟算过期）
+    if (acc.authType === 'oauth2') {
+      acc.oauthAccessToken = await goauth.getAccessToken(acc.email);
+    }
     const client = makeClient(acc);
     await client.connect();
     entry = {
@@ -705,7 +717,7 @@ export async function sendMail(acc, payload) {
       host: acc.smtp.host,
       port: Number(acc.smtp.port) || 465,
       secure: acc.smtp.secure !== false,
-      auth: { user: acc.username || acc.email, pass: acc.pass },
+      auth: smtpAuth(acc),
       proxy: toProxyUrl(acc.proxy) || undefined,
       tls: { rejectUnauthorized: acc.smtp.allowInvalidCert ? false : true },
       connectionTimeout: 25000,
@@ -920,7 +932,7 @@ export async function testAccount(acc) {
         host: acc.smtp.host,
         port: Number(acc.smtp.port) || 465,
         secure: acc.smtp.secure !== false,
-        auth: { user: acc.username || acc.email, pass: acc.pass },
+        auth: smtpAuth(acc),
         proxy: toProxyUrl(acc.proxy) || undefined,
         tls: { rejectUnauthorized: acc.smtp.allowInvalidCert ? false : true },
         connectionTimeout: 20000,

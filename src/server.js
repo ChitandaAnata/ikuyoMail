@@ -33,6 +33,7 @@ import * as marks from './marks.js';
 import * as notifier from './notifier.js';
 import * as poller from './poller.js';
 import * as autostart from './autostart.js';
+import * as goauth from './goauth.js';
 
 const APP_NAME = 'ikuyoMail';
 
@@ -96,11 +97,13 @@ app.get('/api/accounts', (req, res) => {
 app.post(
   '/api/accounts',
   wrap(async (req, res) => {
-    const { email, pass, name, provider, imap, smtp, username, proxy } = req.body || {};
+    const { email, pass, name, provider, imap, smtp, username, proxy, authType, loginId } = req.body || {};
     if (!email || !/^[^\s@]+@[^\s@]+$/.test(String(email).trim())) {
       return res.status(400).json({ error: '请填写正确的邮箱地址' });
     }
-    if (!pass || !String(pass).trim()) {
+
+    const isOauth = authType === 'oauth2';
+    if (!isOauth && (!pass || !String(pass).trim())) {
       return res.status(400).json({ error: '请填写密码或授权码' });
     }
     const pid = provider && PROVIDERS[provider] ? provider : guessProvider(email);
@@ -120,10 +123,19 @@ app.post(
       provider: pid,
       imap: cfgnorm(cfg.imap),
       smtp: cfgnorm(cfg.smtp),
-      pass: String(pass).trim(),
+      pass: isOauth ? '' : String(pass).trim(),
       proxy: proxyCfg,
       name: (name || '').trim() || String(email).split('@')[0],
+      authType: isOauth ? 'oauth2' : 'password',
     };
+
+    if (isOauth) {
+      // Gmail OAuth：令牌在授权回调时已经落盘，这里确认拿到过再验证
+      if (!goauth.hasAccount(draft.email)) {
+        return res.status(400).json({ error: '还没有完成 Google 授权，请先点「使用 Google 账号登录」' });
+      }
+      if (loginId) goauth.pollLogin(loginId); // 顺手清掉会话
+    }
 
     // 先验证再落盘，避免存一堆登不上的账号
     const probeId = 'probe-' + crypto.randomUUID();
@@ -149,6 +161,41 @@ function cfgnorm(c) {
     allowInvalidCert: !!c.allowInvalidCert,
   };
 }
+
+/* ---------------- Google 账号登录（Gmail OAuth） ---------------- */
+
+app.get('/api/google/oauth/status', (req, res) => {
+  res.json({ configured: goauth.isConfigured() });
+});
+
+app.post(
+  '/api/google/oauth/config',
+  wrap(async (req, res) => {
+    const { clientId, clientSecret } = req.body || {};
+    if (!String(clientId || '').trim() || !String(clientSecret || '').trim()) {
+      return res.status(400).json({ error: 'Client ID 和 Client Secret 都要填' });
+    }
+    goauth.setConfig(clientId, clientSecret);
+    res.json({ ok: true, configured: true });
+  })
+);
+
+app.post(
+  '/api/google/oauth/login',
+  wrap(async (req, res) => {
+    const { email } = req.body || {};
+    try {
+      const out = await goauth.startLogin(email);
+      res.json(out);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  })
+);
+
+app.get('/api/google/oauth/login/:loginId', (req, res) => {
+  res.json(goauth.pollLogin(req.params.loginId));
+});
 
 app.patch(
   '/api/accounts/:id',
@@ -225,6 +272,8 @@ app.delete(
     poller.forgetAccount(req.params.id);
     forgetSearchIndex(req.params.id);
     marks.forgetAccount(req.params.id);
+    const acc = requireAccount(req.params.id);
+    if (acc.authType === 'oauth2') goauth.forget(acc.email);
     const ok = removeAccount(req.params.id);
     res.json({ ok });
   })

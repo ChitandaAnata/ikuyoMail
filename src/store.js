@@ -106,6 +106,7 @@ export function publicAccount(a) {
     imap: a.imap,
     smtp: a.smtp,
     proxy: publicProxy(a.proxy),
+    authType: a.authType || 'password',
     createdAt: a.createdAt,
     lastError: a.lastError || null,
   };
@@ -164,7 +165,9 @@ export function addAccount(input) {
     imap: input.imap,
     smtp: input.smtp,
     proxy: buildStoredProxy(input.proxy, null),
-    encPass: encrypt(input.pass),
+    // OAuth 账号（Gmail）没有密码，令牌放在 google-oauth.json 里统一管
+    authType: input.authType || 'password',
+    encPass: encrypt(input.pass || ''),
     createdAt: new Date().toISOString(),
   };
   db.accounts.push(acc);

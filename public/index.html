@@ -142,7 +142,25 @@
             <label class="field"><span>Client ID</span><input id="googleClientId" autocomplete="off" spellcheck="false" placeholder="xxxx.apps.googleusercontent.com"></label>
             <label class="field"><span>Client Secret</span><input id="googleClientSecret" type="password" autocomplete="off" placeholder="GOCSPX-…"></label>
             <button class="ghost-btn" id="googleConfigSave" type="button">保存凭据</button>
-            <p class="adv-tip">凭据在 Google Cloud Console「APIs &amp; Services → Credentials」里创建，类型选 Desktop app。只存在本机。</p>
+            <p class="adv-tip">凭据在 Google Cloud Console「APIs &amp; Services → Credentials」里创建，类型选 Desktop app。只存在本机。不知道怎么弄？看下面的教程。</p>
+          </details>
+          <details class="google-help">
+            <summary>第一次弄？点开看完整教程（一次性，约 10 分钟）</summary>
+            <div class="help-body">
+              <p class="help-why">Google 要求每个第三方邮件应用先在它那里登记一次。跟着下面的步骤点就行，全程不用写代码；做完这一次，以后加任何 Gmail 都只需要 1 分钟。</p>
+              <ol>
+                <li><b>打开 Google Cloud 控制台</b>：<a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a>，登录你的 Google 账号</li>
+                <li><b>新建项目</b>：顶部项目选择器 →「新建项目」，名字随意（如 ikuyoMail），创建后切换过去</li>
+                <li><b>启用 Gmail API</b>：顶部搜索框搜「Gmail API」→ 点进结果 →「启用」</li>
+                <li><b>配置同意屏幕</b>：左侧菜单「Google Auth Platform」→ User Type 选「外部」→ 应用名称填 ikuyoMail → 一路保存</li>
+                <li><b>添加测试用户</b>：「目标对象」页 →「测试用户」→ + Add users → 填<b>你要收信的那个 Gmail 地址</b>。<em>以后每想添加一个新 Gmail，都要先来这里把这个地址加进去（10 秒钟），否则授权会被拒绝</em></li>
+                <li><b>创建凭据</b>：左侧「客户端」→ + 创建客户端 → 应用类型选 <b>桌面应用</b>（不要选 Web）→ 创建后把 Client ID 和 Client Secret <b>复制</b>下来。<em>务必复制粘贴，别手抄——I/l/1、0/O 长得一模一样，抄错一个字母就会授权失败</em></li>
+                <li><b>回到本窗口</b>：展开「填入凭据」，把两串分别粘贴进去 → 点「使用 Google 账号登录」</li>
+                <li><b>浏览器里授权</b>：选你的账号 → 看到「Google 尚未验证此应用」的红色警告<b>是正常的</b>（个人应用都这样）：点「高级」→「继续前往」→ 拉到底点「允许」→ 页面显示授权成功，程序会自动接手</li>
+              </ol>
+              <p class="help-net"><b>国内网络提醒</b>：上面所有步骤和之后的 Gmail 收发信，都需要能访问 Google（开着 Clash 等代理）。另外添加账号时请展开「高级」，把代理填上：类型 <b>HTTP</b>、地址 <code>127.0.0.1</code>、端口填你代理软件的端口（Clash 默认 <code>7897</code>），否则收不了信。</p>
+              <p class="help-faq"><b>常见问题</b><br>· 提示 <code>client secret is invalid</code> → 密钥抄错了，回控制台重新复制粘贴（最常见！）<br>· 提示授权超时 → 超过 5 分钟没点完，回程序再点一次登录即可<br>· 授权成功但保存失败 → 检查「高级」里的代理是否已填、代理软件是否在运行<br>· 别人能用我的凭据吗 → 不能。凭据只是「应用身份证」，不是邮箱钥匙；其他人需要按本教程自建一套</p>
+            </div>
           </details>
         </div>
       </div>

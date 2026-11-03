@@ -53,8 +53,22 @@ const info = await page.evaluate(() => ({
   configOpen: document.getElementById('googleConfigDetails')?.open,
 }));
 
-// 截图
-await page.screenshot({ path: 'shots/oauth-gmail-modal.png' });
+// 截图（先展开凭据区和教程，看全貌）
+await page.evaluate(() => {
+  const cfg = document.getElementById('googleConfigDetails');
+  if (cfg) cfg.open = true;
+  const help = document.querySelector('.google-help');
+  if (help) help.open = true;
+});
+await wait(300);
+await page.screenshot({ path: 'shots/oauth-gmail-modal.png', fullPage: false });
+// 教程区在弹窗滚动区内，滚过去再截一张
+await page.evaluate(() => {
+  const help = document.querySelector('.google-help');
+  if (help) help.scrollIntoView({ block: 'start' });
+});
+await wait(300);
+await page.screenshot({ path: 'shots/oauth-gmail-help.png', fullPage: false });
 
 // 切回 163 看区块是否消失
 await page.evaluate(() => {

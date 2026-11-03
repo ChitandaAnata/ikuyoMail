@@ -4,7 +4,11 @@
 
 所有账号凭据以 AES-256-GCM 加密后只保存在本机，邮件不经过任何第三方中转。
 
-## 快速开始
+## 下载安装包（推荐给普通用户）
+
+不想折腾 Node 环境的话，直接到 [Releases](https://github.com/ChitandaAnata/ikuyoMail/releases/latest) 下载 `ikuyoMail-Setup-*.exe` 双击安装：自带运行时，装完即用，卸载也干净（安装目录里的 `Uninstall.exe`，或 Windows「设置 → 应用」）。详见下文「安装包（分发给别人）」。
+
+## 从源码运行
 
 ```bash
 cd mailbox
@@ -28,6 +32,7 @@ npm run demo     # http://127.0.0.1:7318
 
 ## 功能
 
+- **Gmail 用 Google 账号登录（OAuth2）**：2025 年起 Gmail 停用了密码 / 授权码登录，现在选 Gmail 时只需填一次自己的 Google Cloud 凭据（Client ID / Secret），软件内点「使用 Google 账号登录」跳浏览器授权，之后收发信全部走 XOAUTH2，令牌自动续期；页面里内置了完整的授权教程
 - 多账号并存，一键切换；账号列表显示未读数
 - **账号可编辑**：改显示名、换授权码、改服务器地址，保存前会重新验证；也可以直接删除账号
 - **账号级代理**：某个邮箱在本地网络连不上时，可以让它单独走 SOCKS5 / SOCKS4 / HTTP / HTTPS 代理，其他账号不受影响
@@ -51,7 +56,7 @@ npm run demo     # http://127.0.0.1:7318
 - **独立阅读窗口**：把这封邮件弹到单独窗口，主界面只剩两栏；关掉独立窗口自动回到三栏，并回到你最后看的那封
 - **贴边抽屉**：主窗口贴着屏幕顶部时，鼠标移开就向上收起只剩一条边，鼠标移到顶部边缘再滑出（Windows；双击 bat 启动时生效）
 - 快捷键：`C` 写邮件，`R` 刷新，`F9` 收起/展开阅读区，`Esc` 关闭弹窗
-- 设置面板左下角显示当前版本（第一版是 `V1.0.1`）
+- 设置面板左下角显示当前版本（版本号读自 `package.json`）
 - 三块各有硬下限（账号栏 190 / 列表 340 / 阅读区 440）：窗口变窄时依次压缩，碰到谁的下限就轮到下一块，全到下限后窗口就缩不动了——任何宽度下都不会把内容藏到视口外面
 
 ## 邮件列表右键菜单
@@ -184,12 +189,12 @@ ikuyoMail.exe --pdf-test="http://127.0.0.1:7317/print.html?acc=<账号id>&folder
 
 ## 安装包（分发给别人）
 
-`ikuyoMail-Setup-1.0.1.exe`（约 126 MB）是给「没装 Node、也没装 .NET」的人用的安装程序：
+最新安装包在 [Releases](https://github.com/ChitandaAnata/ikuyoMail/releases/latest) 页面下载（约 126 MB），是给「没装 Node、也没装 .NET」的人用的安装程序：
 
 - **界面**：左边是插画和版本号，右边填安装位置、勾桌面快捷方式，一个按钮装完；配色跟程序本体一致（主色取自插画里的红），无边框圆角窗口。
 - **装在哪**：默认 `%LOCALAPPDATA%\Programs\ikuyoMail`，装到当前用户，**不需要管理员权限**；装机位置可以改。选目录时总会落在其下的 `ikuyoMail` 文件夹里（选 `H://` → `H://ikuyoMail`，选 `H://Apps` → `H://Apps//ikuyoMail`；已经选中 `ikuyoMail` 就不再套一层）。
 - **装了什么**：自包含的 `ikuyoMail.exe`（不依赖 .NET 运行时）、`Uninstall.exe`（`ikuyoMail.exe` 的硬链接，双击就能卸载）、`runtime\node.exe`、生产依赖、`src` / `public` / `assets`。
-- **顺带做了**：桌面 + 开始菜单快捷方式、开始菜单里的「卸载 ikuyoMail」、写入「设置 → 应用 → 已安装的应用」（版本 1.0.1，卸载命令指向安装目录里的 `Uninstall.exe`）。
+- **顺带做了**：桌面 + 开始菜单快捷方式、开始菜单里的「卸载 ikuyoMail」、写入「设置 → 应用 → 已安装的应用」（卸载命令指向安装目录里的 `Uninstall.exe`）。
 - 没检测到 WebView2 运行时的话，界面上会直接给下载链接（Win11 和大部分 Win10 自带）。
 
 ### 卸载
@@ -216,7 +221,7 @@ SKIP_PAYLOAD=1 node scripts/build-setup.mjs    # 只改安装界面时用，跳�
 静默安装 / 卸载（脚本用，也可以自己试）：
 
 ```bash
-ikuyoMail-Setup-1.0.1.exe /S --dir=D://Apps --log=%TEMP%\setup.log   # 退出码 0 = 成功；装在 D://Apps//ikuyoMail
+ikuyoMail-Setup-1.0.2.exe /S --dir=D://Apps --log=%TEMP%\setup.log   # 退出码 0 = 成功；装在 D://Apps//ikuyoMail
 Uninstall.exe                      # 带界面的卸载
 Uninstall.exe /S                   # 静默卸载，保留 data
 Uninstall.exe /S --purge           # 静默卸载，连账号数据一起删
@@ -227,11 +232,11 @@ Uninstall.exe /S --purge           # 静默卸载，连账号数据一起删
 安装界面可以单独出图核对（不装任何东西）：
 
 ```bash
-ikuyoMail-Setup-1.0.1.exe --shot=shots/setup/ready.png
-ikuyoMail-Setup-1.0.1.exe --shot=shots/setup/installing.png --step=installing
+ikuyoMail-Setup-1.0.2.exe --shot=shots/setup/ready.png
+ikuyoMail-Setup-1.0.2.exe --shot=shots/setup/installing.png --step=installing
 
 # 路径规整规则（只回显，不装东西）
-ikuyoMail-Setup-1.0.1.exe --path-test=H://          # → H://ikuyoMail
+ikuyoMail-Setup-1.0.2.exe --path-test=H://          # → H://ikuyoMail
 
 # 卸载窗口的状态图（程序本体自带，不删任何东西）
 ikuyoMail.exe --uninstall-shot=shots/uninstall/confirm.png
@@ -286,14 +291,14 @@ ikuyoMail.exe --uninstall-shot=shots/uninstall/done.png --step=done
 
 ## 各邮箱怎么拿到"密码"
 
-绝大多数邮箱不接受登录密码，需要单独生成一个「客户端授权码 / 应用专用密码」，填在密码框里。
+除 Gmail（直接用 Google 账号授权，见下表）外，绝大多数邮箱不接受登录密码，需要单独生成一个「客户端授权码 / 应用专用密码」，填在密码框里。
 
 | 邮箱 | 需要什么 | 在哪里拿 |
 | --- | --- | --- |
 | QQ 邮箱 | 16 位授权码 | 网页版 → 设置 → 账号 → 开启 IMAP/SMTP → 按提示发短信获取 |
 | 腾讯企业邮 | 客户端专用密码 | 管理后台 → 设置 → 客户端专用密码 |
 | 163 / 126 / yeah.net | 客户端授权密码 | 网页版 → 设置 → POP3/SMTP/IMAP → 开启 IMAP → 设置授权密码 |
-| Gmail | 应用专用密码（16 位） | Google 账号 → 安全 → 开启两步验证 → 应用专用密码 |
+| Gmail | **不用授权码**，走 Google 账号授权（OAuth2） | Google Cloud Console 建一个 OAuth 客户端拿 Client ID / Secret（软件里点开「配置凭据说明」有完整 8 步图文教程） |
 | Outlook / Hotmail | 应用密码 | 账号 → 安全 → 高级安全选项 → 开启双重验证 → 创建应用密码 |
 | iCloud | App 专用密码 | appleid.apple.com → 登录与安全 → App 专用密码 |
 | Yahoo | 应用密码 | 账号安全设置 → 生成应用密码 |
@@ -379,9 +384,9 @@ SOCKS5 + SMTP      → 认证通过
 
 - **exe 需要 .NET 10 桌面运行时**（这台机器装了 .NET SDK 就有）。要拷给别人用，用 `--self-contained true` 重新发布，产物会大到 150MB 左右但不再依赖运行时。
 
-- **Outlook / Hotmail**：微软正在逐步停用基础认证，应用密码在部分账号上已被拒绝。若提示登录被拒绝，不是程序 bug，是服务商策略；本程序暂未接入 OAuth2（需要自建 Azure 应用并走授权跳转）。
-- **Gmail**：需要你的网络能直连 `imap.gmail.com`，否则会报连接超时。
-- **不支持 OAuth2 登录**，全部走「账号 + 授权码」的方式，好处是不用申请开发者应用。
+- **Gmail**：走 OAuth2 授权后同样需要你的网络能连上 `imap.gmail.com`（国内通常要代理，可用账号级代理或系统代理），否则会报连接超时。
+- **Outlook / Hotmail 暂未接入 OAuth2**：微软正在逐步停用基础认证，应用密码在部分账号上已被拒绝。Gmail 已经走 OAuth2 了，Outlook 若提示登录被拒绝，是服务商策略，不是程序 bug。
+- 除 Gmail（OAuth2）外，其余邮箱都走「账号 + 授权码」的方式，好处是不用为每家申请开发者应用。
 - 单账号同一时间只保持一条 IMAP 连接（浏览器端操作串行），够个人使用，不适合多端同时高频操作。
 - **SOCKS 代理密码**含 `@ : / %` 或空格时，底层库无法正确传递，认证会失败；改用 HTTP 代理或换一个纯字母数字密码即可（详见上文「用代理收发信」）。
 - 有些服务商不返回 `STATUS ... UIDNEXT`（163 就是），诊断里这一项会显示为 `—`，不影响使用。
@@ -408,7 +413,7 @@ SOCKS5 + SMTP      → 认证通过
 mailbox/
 ├── ikuyoMail.exe       原生窗口程序（双击就用，见「打包成 exe」）
 ├── WebView2Loader.dll  exe 的 WebView2 加载器，不能删
-├── ikuyoMail-Setup-1.0.1.exe  安装程序（发给别人用这个）
+├── ikuyoMail-Setup-1.0.2.exe  安装程序（发给别人用这个）
 ├── 启动 ikuyoMail.bat   没有 exe 时的退路：Chrome --app 窗口
 ├── desktop/
 │   ├── ikuyoMail.csproj  WinForms + WebView2 项目
@@ -426,6 +431,7 @@ mailbox/
 ├── src/
 │   ├── server.js       Express 服务与 REST 接口、SSE 事件流
 │   ├── imap.js         IMAP 连接池、收发信、文件夹与标志位操作
+│   ├── goauth.js       Gmail OAuth2：凭据管理、授权回调、令牌刷新（XOAUTH2）
 │   ├── store.js        账号读写与 AES-256-GCM 加密
 │   ├── marks.js        本地标记：置顶 / 待办 / 备注（data/marks.json）
 │   ├── providers.js    各邮箱服务商预设、下拉选项与自动识别
@@ -496,6 +502,10 @@ mailbox/
 | POST | `/api/check-now` | 立即检查一次新邮件 |
 | POST | `/api/notify/test` | 发一条测试提醒 |
 | POST | `/api/power/quit` | 退出程序（托盘菜单「退出」调的就是它） |
+| GET | `/api/google/oauth/status` | Gmail OAuth 凭据是否已配置、各账号授权状态 |
+| POST | `/api/google/oauth/config` | 保存 Google Cloud OAuth 客户端凭据（Secret 加密存） |
+| POST | `/api/google/oauth/login` | 发起 Google 授权，返回本机回跳地址 |
+| GET | `/api/google/oauth/login/:id` | 轮询授权进度（授权中 / 成功 / 失败原因） |
 
 ## 常见问题
 

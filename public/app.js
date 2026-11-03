@@ -2045,6 +2045,16 @@ async function startGoogleLogin() {
     showAccountError('先填好邮箱地址，再点 Google 登录');
     return;
   }
+  // 输入框里填了新凭据就先自动存——很多人改完直接点登录，会忘掉「保存凭据」那一下
+  const cidInput = $('#googleClientId').value.trim();
+  const secInput = $('#googleClientSecret').value.trim();
+  if (cidInput && secInput) {
+    await saveGoogleConfig();
+  } else if (cidInput || secInput) {
+    $('#googleConfigDetails').open = true;
+    showAccountError('Client ID 和 Client Secret 要一起填（另一个框还空着）');
+    return;
+  }
   if (!state.googleConfigured) {
     $('#googleConfigDetails').open = true;
     showAccountError('先填入 Google 客户端凭据并保存');

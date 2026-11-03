@@ -13,7 +13,9 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 import { encrypt, decrypt } from './store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -102,17 +104,91 @@ export function forget(email) {
   }
 }
 
+/**
+ * 出网策略：Google 的接口在国内通常直连不通，浏览器走系统代理没问题，
+ * 但 Node 里的 fetch 不会自动跟。所以顺序是——
+ *   1) 直接连（有 TUN/全局代理或能直连的用户，一次就成了）；
+ *   2) 失败则找环境变量 HTTPS_PROXY / HTTP_PROXY；
+ *   3) 再失败读 Windows 注册表里的系统代理（Clash / v2rayN 装好后都会写）。
+ * 成功用哪条路会被记住，之后的请求不再浪费时间重试直连。
+ */
+let egress = { mode: 'auto' }; // auto | direct | proxy:{url}
+let systemProxyCache = { url: null, at: 0 };
+
+async function readSystemProxy() {
+  if (Date.now() - systemProxyCache.at < 5 * 60_000) return systemProxyCache.url;
+  const url = await new Promise((resolve) => {
+    if (process.platform !== 'win32') return resolve(null);
+    const key = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings';
+    execFile('reg', ['query', key, '/v', 'ProxyEnable'], (e, out) => {
+      if (e || !/0x1\b/.test(String(out))) return resolve(null);
+      execFile('reg', ['query', key, '/v', 'ProxyServer'], (e2, out2) => {
+        if (e2) return resolve(null);
+        const m = String(out2).match(/ProxyServer\s+REG_SZ\s+(\S+)/i);
+        if (!m) return resolve(null);
+        let s = m[1];
+        if (s.includes('=')) {
+          // "http=...;https=...;ftp=..." 形式，优先取 https 条目
+          const part = s
+            .split(';')
+            .map((x) => x.trim())
+            .find((x) => x.startsWith('https=') || x.startsWith('socks='));
+          s = part ? part.split('=')[1] : '';
+        }
+        resolve(s ? `http://${s}` : null);
+      });
+    });
+  });
+  systemProxyCache = { url, at: Date.now() };
+  return url;
+}
+
+async function envOrSystemProxy() {
+  const envProxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
+  if (envProxy) return envProxy;
+  return readSystemProxy();
+}
+
+async function candidateDispatchers() {
+  const direct = new Agent({ connectTimeout: 12_000 });
+  if (egress.mode === 'direct') return [direct];
+  if (egress.mode === 'proxy') {
+    const url = await envOrSystemProxy();
+    if (url) return [new ProxyAgent(url), direct];
+  }
+  const list = [direct];
+  const url = await envOrSystemProxy();
+  if (url) list.push(new ProxyAgent(url));
+  return list;
+}
+
 async function tokenRequest(params) {
-  const res = await fetch(TOKEN_ENDPOINT, {
+  const body = new URLSearchParams(params).toString();
+  const init = {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error_description || data.error || `Google 返回 ${res.status}`);
+    body,
+  };
+  let lastErr = null;
+  for (const dispatcher of await candidateDispatchers()) {
+    try {
+      const res = await undiciFetch(TOKEN_ENDPOINT, { ...init, dispatcher });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Google 明确拒绝了（如 invalid_client），换网络通道也没用，直接抛
+        throw new Error(data.error_description || data.error || `Google 返回 ${res.status}`);
+      }
+      egress = dispatcher instanceof ProxyAgent ? { mode: 'proxy' } : { mode: 'direct' };
+      return data;
+    } catch (e) {
+      // Google 的业务错误原样抛出，不重试
+      if (/Google 返回|invalid_client|invalid_grant|error_description/i.test(e.message) && !/fetch failed/i.test(e.message)) {
+        throw e;
+      }
+      lastErr = e;
+    }
   }
-  return data;
+  throw new Error('连不上 Google（直连和系统代理都试过了）：' + (lastErr?.cause?.message || lastErr?.message));
 }
 
 /**

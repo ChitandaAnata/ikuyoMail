@@ -18,7 +18,7 @@ const APP_OUT = path.join(BUILD, 'app');
 const PAYLOAD = path.join(BUILD, 'payload');
 const SETUP_OUT = path.join(BUILD, 'setup');
 const ZIP = path.join(ROOT, 'installer', 'payload.zip');
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 
 const log = (...a) => console.log('•', ...a);
 const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', cwd: ROOT, ...opts });

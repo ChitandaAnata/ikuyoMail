@@ -115,7 +115,7 @@ SKIP_PAYLOAD=1 node scripts/build-setup.mjs    # 只改安装界面时用，跳�
 静默安装 / 卸载：
 
 ```bash
-ikuyoMail-Setup-1.0.2.exe /S --dir=D://Apps --log=%TEMP%\setup.log   # 退出码 0 = 成功
+ikuyoMail-Setup-1.0.3.exe /S --dir=D://Apps --log=%TEMP%\setup.log   # 退出码 0 = 成功
 Uninstall.exe                      # 带界面的卸载
 Uninstall.exe /S                   # 静默卸载，保留 data
 Uninstall.exe /S --purge           # 静默卸载，连账号数据一起删
@@ -124,9 +124,9 @@ Uninstall.exe /S --purge           # 静默卸载，连账号数据一起删
 安装界面可以单独出图核对（不装任何东西）：
 
 ```bash
-ikuyoMail-Setup-1.0.2.exe --shot=shots/setup/ready.png
-ikuyoMail-Setup-1.0.2.exe --shot=shots/setup/installing.png --step=installing
-ikuyoMail-Setup-1.0.2.exe --path-test=H://          # 路径规整规则回显 → H://ikuyoMail
+ikuyoMail-Setup-1.0.3.exe --shot=shots/setup/ready.png
+ikuyoMail-Setup-1.0.3.exe --shot=shots/setup/installing.png --step=installing
+ikuyoMail-Setup-1.0.3.exe --path-test=H://          # 路径规整规则回显 → H://ikuyoMail
 ikuyoMail.exe --uninstall-shot=shots/uninstall/confirm.png   # 卸载窗口状态图
 ```
 

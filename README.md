@@ -6,9 +6,9 @@
 
 ## 下载安装
 
-到 [Releases](https://github.com/ChitandaAnata/ikuyoMail/releases/latest) 下载 `ikuyoMail-Setup-*.exe`，双击安装即可：自带运行时，不需要装 Node 或任何依赖，装完桌面就有图标。
+到 [Releases](https://github.com/ChitandaAnata/ikuyoMail/releases/latest) 下载 `ikuyoMail-Setup-*.exe`，双击安装即可：自带运行时，不需要装 Node 或任何依赖。
 
-不想用了就卸载：安装目录里的 `Uninstall.exe`、开始菜单里的「卸载 ikuyoMail」、或 Windows「设置 → 应用」都行。可以选「同时删除账号数据」，不选的话重装后接着用。
+
 
 ## 添加邮箱账号
 

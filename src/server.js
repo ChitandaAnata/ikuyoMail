@@ -34,6 +34,7 @@ import * as notifier from './notifier.js';
 import * as poller from './poller.js';
 import * as autostart from './autostart.js';
 import * as goauth from './goauth.js';
+import * as msauth from './msauth.js';
 
 const APP_NAME = 'ikuyoMail';
 
@@ -130,11 +131,17 @@ app.post(
     };
 
     if (isOauth) {
-      // Gmail OAuth：令牌在授权回调时已经落盘，这里确认拿到过再验证
-      if (!goauth.hasAccount(draft.email)) {
-        return res.status(400).json({ error: '还没有完成 Google 授权，请先点「使用 Google 账号登录」' });
+      // OAuth 账号：令牌在授权回调时已经落盘，这里确认拿到过再验证
+      const isMs = pid === 'outlook';
+      const store = isMs ? msauth : goauth;
+      if (!store.hasAccount(draft.email)) {
+        return res.status(400).json({
+          error: isMs
+            ? '还没有完成 Microsoft 授权，请先点「使用 Microsoft 账号登录」'
+            : '还没有完成 Google 授权，请先点「使用 Google 账号登录」',
+        });
       }
-      if (loginId) goauth.pollLogin(loginId); // 顺手清掉会话
+      if (loginId) (isMs ? msauth : goauth).pollLogin(loginId); // 顺手清掉会话
     }
 
     // 先验证再落盘，避免存一堆登不上的账号
@@ -195,6 +202,45 @@ app.post(
 
 app.get('/api/google/oauth/login/:loginId', (req, res) => {
   res.json(goauth.pollLogin(req.params.loginId));
+});
+
+/* ---------------- Microsoft 账号登录（Outlook OAuth） ---------------- */
+
+app.get('/api/microsoft/oauth/status', (req, res) => {
+  res.json({ configured: msauth.isConfigured() });
+});
+
+app.post(
+  '/api/microsoft/oauth/config',
+  wrap(async (req, res) => {
+    const clientId = String((req.body || {}).clientId || '').trim();
+    if (!clientId) return res.status(400).json({ error: '请填 Application (client) ID' });
+    // GUID 形状校验，避免把「应用程序 ID URI」或别的串贴进来
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) {
+      return res
+        .status(400)
+        .json({ error: 'Client ID 应该是一串 GUID（形如 12345678-1234-1234-1234-123456789abc）' });
+    }
+    msauth.setConfig(clientId);
+    res.json({ ok: true, configured: true });
+  })
+);
+
+app.post(
+  '/api/microsoft/oauth/login',
+  wrap(async (req, res) => {
+    const { email } = req.body || {};
+    try {
+      const out = await msauth.startLogin(email);
+      res.json(out);
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  })
+);
+
+app.get('/api/microsoft/oauth/login/:loginId', (req, res) => {
+  res.json(msauth.pollLogin(req.params.loginId));
 });
 
 app.patch(

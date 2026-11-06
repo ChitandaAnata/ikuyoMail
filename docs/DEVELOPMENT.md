@@ -138,6 +138,15 @@ ikuyoMail.exe --uninstall-shot=shots/uninstall/confirm.png   # 卸载窗口状�
 - SMTP 用 XOAUTH2（`imapflow` 的 `auth.accessToken` / nodemailer OAuth2），令牌过期前自动刷新。
 - WebView2 的 `NewWindowRequested` 必须转交系统浏览器打开（OAuth 窗口不能在内嵌 WebView 里完成）。
 
+## Outlook OAuth2 实现要点
+
+- 和 Gmail 同一套流程，但用**公共客户端 + PKCE**：只需要 Client ID，不需要 Client Secret。凭据存 `data/microsoft-oauth.json`。
+- 授权端点 `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`（common 同时支持个人与组织账户）；scope 为 `offline_access openid profile email https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send`。
+- 回调地址必须用 `http://localhost:<port>`（Azure 对 loopback 的规则是注册 `http://localhost` 后任意端口放行；写 `127.0.0.1` 会 `redirect_uri` 不匹配）。本地仍监听 `127.0.0.1`。
+- 令牌同样是 access（约 1 小时）+ refresh，刷新时带上 `client_id` 与 scope 即可，不需要 secret。
+- `imap.js` 里用 `oauthToken(acc)` 按 `acc.provider` 分发：`outlook` → msauth，其余 OAuth 账号 → goauth；发信前也会补一次令牌（从磁盘读出的账号对象本身不带 token）。
+- 常见错误：`AADSTS700016` = 应用 ID 错或账户类型没选「任何组织目录中的账户和个人账户」；`AADSTS50011` = 没配 `http://localhost` 重定向；`AADSTS65001` = 未同意权限。
+
 ## 搜索为什么不用 IMAP SEARCH
 
 一开始搜索是直接发 `UID SEARCH OR SUBJECT/FROM/TO` 给服务器的，结果在网易 163 上永远返回 0 封——但服务器回的是 `OK`。抓包确认：Coremail 对 `FROM / SUBJECT / TO / TEXT` 一律回 `* SEARCH`（空列表）再回 OK，只有 `ALL` 和 UID 区间是准的。
@@ -184,6 +193,7 @@ mailbox/
 │   ├── server.js       Express 服务与 REST 接口、SSE 事件流
 │   ├── imap.js         IMAP 连接池、收发信、文件夹与标志位操作
 │   ├── goauth.js       Gmail OAuth2：凭据、授权回调、令牌刷新
+│   ├── msauth.js       Outlook OAuth2：公共客户端 + PKCE，无需 Client Secret
 │   ├── store.js        账号读写与 AES-256-GCM 加密
 │   ├── marks.js        本地标记：置顶 / 待办 / 备注
 │   ├── providers.js    服务商预设与自动识别
@@ -228,3 +238,7 @@ mailbox/
 | POST | `/api/google/oauth/config` | 保存 OAuth 客户端凭据 |
 | POST | `/api/google/oauth/login` | 发起授权，返回本机回跳地址 |
 | GET | `/api/google/oauth/login/:id` | 轮询授权进度 |
+| GET | `/api/microsoft/oauth/status` | Outlook OAuth 应用 ID 是否已配置 |
+| POST | `/api/microsoft/oauth/config` | 保存 Azure 应用 ID（GUID 校验） |
+| POST | `/api/microsoft/oauth/login` | 发起授权（公共客户端 + PKCE） |
+| GET | `/api/microsoft/oauth/login/:id` | 轮询授权进度 |

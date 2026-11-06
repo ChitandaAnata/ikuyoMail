@@ -165,6 +165,39 @@
         </div>
       </div>
 
+      <div id="msBlock" hidden>
+        <div class="hint-card google-card">
+          <div class="hint-title">Outlook 要用 Microsoft 授权登录</div>
+          <p class="google-text">微软已停用「账号 + 密码 / 应用密码」的登录方式，点下面的按钮跳转微软官方页面授权，不用输密码。</p>
+          <button class="primary-btn" id="msLoginBtn" type="button">使用 Microsoft 账号登录</button>
+          <p class="google-status" id="msStatus" hidden></p>
+          <details class="google-config" id="msConfigDetails">
+            <summary>首次使用：填入 Azure 应用 ID（Application client ID）</summary>
+            <label class="field"><span>Application (client) ID</span><input id="msClientId" autocomplete="off" spellcheck="false" placeholder="12345678-1234-1234-1234-123456789abc"></label>
+            <button class="ghost-btn" id="msConfigSave" type="button">保存应用 ID</button>
+            <p class="adv-tip">在 Azure 门户「应用注册」里创建（免费，个人账号即可），只需要这一个 ID，<b>不需要密钥</b>。只存在本机。不知道怎么弄？看下面的教程。</p>
+          </details>
+          <details class="google-help">
+            <summary>第一次弄？点开看完整教程（一次性，约 8 分钟）</summary>
+            <div class="help-body">
+              <p class="help-why">微软要求每个第三方邮件应用先登记一次。跟着点就行，全程不用写代码、不用付费；做完这一次，以后加任何 Outlook 邮箱都只要 1 分钟。</p>
+              <ol>
+                <li><b>打开 Azure 门户</b>：<a href="https://portal.azure.com" target="_blank" rel="noopener">portal.azure.com</a>，用<b>你要收信的那个 Microsoft 账号</b>登录（个人账号就行，不需要公司账号）</li>
+                <li><b>进入应用注册</b>：顶部搜索框搜「应用注册」→ 点进结果 → 点「新注册」</li>
+                <li><b>填基本信息</b>：名称随意（如 ikuyoMail）；「受支持的账户类型」选<b>第二项</b>「任何组织目录中的账户和个人 Microsoft 账户」；重定向 URI 留空 → 点「注册」</li>
+                <li><b>配置重定向地址</b>：进入刚建好的应用 → 左侧「身份验证」→「添加平台」→ 选「<b>移动和桌面应用程序</b>」→ 勾选或手动添加 <code>http://localhost</code> → 点「配置 / 保存」</li>
+                <li><b>复制应用 ID</b>：左侧「概述」→ 复制「<b>应用程序(客户端) ID</b>」那串 GUID（形如 12345678-1234-…）</li>
+                <li><b>回到本窗口</b>：展开「填入 Azure 应用 ID」，粘贴 → 点「使用 Microsoft 账号登录」</li>
+                <li><b>浏览器里授权</b>：选账号 → 若提示「此应用未经验证」<b>是正常的</b>（个人应用都这样）：点「继续」→ 同意授权</li>
+                <li><b>完成</b>：浏览器显示「授权成功」，程序自动接手并保存账号</li>
+              </ol>
+              <p class="help-net"><b>网络提醒</b>：微软的登录页和 Outlook 服务器在国内一般可以直连，通常不用开代理；若公司网络有限制，可在「高级 → 代理服务器」里单独给这个账号配代理。</p>
+              <p class="help-faq"><b>常见问题</b><br>· 提示 <code>AADSTS700016</code> → 应用 ID 抄错了，回「概述」重新复制；也确认第 3 步选的是第二项账户类型<br>· 提示 <code>redirect_uri</code> 不匹配 → 第 4 步没做，回 Azure「身份验证」加上 <code>http://localhost</code><br>· 提示权限不足（AADSTS65001）→ 重新点一次登录并在浏览器勾选「同意」；仍不行就去左「API 权限」→ 添加权限 → <b>Office 365 Exchange Online</b> → 委托的权限 → 勾 <code>IMAP.AccessAsUser.All</code> 和 <code>SMTP.Send</code> → 保存后重新授权<br>· 别人能用我的应用 ID 吗 → 不能，它只是「应用身份证」，不是邮箱钥匙；别人要自己按教程建一个</p>
+            </div>
+          </details>
+        </div>
+      </div>
+
       <label class="field" id="passField">
         <span id="passLabel">密码 / 授权码</span>
         <input id="accPass" type="password" placeholder="建议使用授权码" autocomplete="new-password">

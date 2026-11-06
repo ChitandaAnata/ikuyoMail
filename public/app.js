@@ -1795,6 +1795,8 @@ function openAccountModal(mode = 'create', acc = null) {
   state.editingAccount = acc;
   state.googleLoginId = null;
   state.googleAuthorized = false;
+  state.msLoginId = null;
+  state.msAuthorized = false;
   const isEdit = state.accountMode === 'edit';
   state.editEmail = isEdit && acc ? acc.email : '';
 
@@ -1855,7 +1857,7 @@ function openAccountModal(mode = 'create', acc = null) {
   }
 
   openModal('accountModal');
-  refreshGoogleStatus().then(() => syncGoogleBlock());
+  Promise.all([refreshGoogleStatus(), refreshMsStatus()]).then(() => syncOauthBlocks());
   setTimeout(() => (isEdit ? $('#accName') : $('#accLocal')).focus(), 60);
 }
 
@@ -1990,7 +1992,7 @@ function applyProviderOption(key, { keepDomain = false } = {}) {
   } else {
     ['#imapHost', '#imapPort', '#smtpHost', '#smtpPort'].forEach((s) => ($(s).value = ''));
   }
-  syncGoogleBlock();
+  syncOauthBlocks();
 }
 
 /* ---------------- Gmail OAuth 登录 ---------------- */
@@ -2010,10 +2012,9 @@ function syncGoogleBlock() {
   const isEdit = state.accountMode === 'edit';
   const acc = state.editingAccount;
   const relevant = isEdit
-    ? acc?.authType === 'oauth2'
+    ? acc?.authType === 'oauth2' && acc?.provider === 'gmail'
     : state.provider === 'gmail';
   $('#googleBlock').hidden = !relevant;
-  $('#passField').hidden = relevant;
   if (!relevant) return;
 
   const btn = $('#googleLoginBtn');
@@ -2027,6 +2028,14 @@ function syncGoogleBlock() {
     status.hidden = false;
     status.textContent = '首次使用需要先在下方填入 Google 客户端凭据（只存本机）。';
   }
+}
+
+/** 两个 OAuth 区块的显隐：密码栏在任一 OAuth 账号下隐藏 */
+function syncOauthBlocks() {
+  syncGoogleBlock();
+  syncMsBlock();
+  const oauthOpen = !$('#googleBlock').hidden || !$('#msBlock').hidden;
+  $('#passField').hidden = oauthOpen;
 }
 
 function setGoogleStatus(text, kind = '') {
@@ -2126,6 +2135,139 @@ async function saveGoogleConfig() {
   }
 }
 
+/* ---------------- Outlook（Microsoft）OAuth 登录 ---------------- */
+
+async function refreshMsStatus() {
+  state.msConfigured = false;
+  try {
+    const out = await api('/microsoft/oauth/status');
+    state.msConfigured = !!out.configured;
+  } catch {
+    /* demo 模式没有这个接口 */
+  }
+}
+
+function syncMsBlock() {
+  const isEdit = state.accountMode === 'edit';
+  const acc = state.editingAccount;
+  const relevant = isEdit
+    ? acc?.authType === 'oauth2' && acc?.provider === 'outlook'
+    : state.provider === 'outlook';
+  $('#msBlock').hidden = !relevant;
+  if (!relevant) return;
+
+  const btn = $('#msLoginBtn');
+  const status = $('#msStatus');
+  status.hidden = true;
+  status.className = 'google-status';
+  $('#msConfigDetails').open = !state.msConfigured;
+  btn.disabled = !state.msConfigured;
+  btn.textContent = isEdit ? '重新登录 Microsoft 账号' : '使用 Microsoft 账号登录';
+  if (!state.msConfigured) {
+    status.hidden = false;
+    status.textContent = '首次使用需要先在下方填入 Azure 应用 ID（只存本机）。';
+  }
+}
+
+function setMsStatus(text, kind = '') {
+  const el = $('#msStatus');
+  el.hidden = !text;
+  el.textContent = text;
+  el.className = 'google-status' + (kind ? ' ' + kind : '');
+}
+
+async function startMsLogin() {
+  const isEdit = state.accountMode === 'edit';
+  const local = $('#accLocal').value.trim();
+  const domain = $('#accDomain').value.trim().replace(/^@+/, '');
+  const email = isEdit ? state.editEmail : local && domain ? `${local}@${domain}` : '';
+  if (!email) {
+    showAccountError('先填好邮箱地址，再点 Microsoft 登录');
+    return;
+  }
+  // 输入框里填了新 ID 就先自动存，省得忘点「保存应用 ID」
+  const cidInput = $('#msClientId').value.trim();
+  if (cidInput) {
+    const ok = await saveMsConfig({ silent: true });
+    if (!ok) return;
+  }
+  if (!state.msConfigured) {
+    $('#msConfigDetails').open = true;
+    showAccountError('先填入 Azure 应用 ID 并保存');
+    return;
+  }
+
+  const btn = $('#msLoginBtn');
+  btn.disabled = true;
+  setMsStatus('正在向 Microsoft 发起授权…');
+  try {
+    const start = await api('/microsoft/oauth/login', { method: 'POST', body: { email } });
+    state.msLoginId = start.loginId;
+    const win = window.open(start.authUrl, '_blank');
+    if (!win) setMsStatus('浏览器没弹出来？把这个链接复制到浏览器打开：' + start.authUrl);
+
+    const deadline = Date.now() + 5 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const st = await api(`/microsoft/oauth/login/${start.loginId}`);
+      if (st.status === 'done') {
+        state.msAuthorized = true;
+        if (isEdit) {
+          setMsStatus('重新授权成功，正在验证连接…', 'ok');
+          const out = await api(`/accounts/${state.editingId}/test`, { method: 'POST' });
+          btn.disabled = false;
+          btn.textContent = '重新登录 Microsoft 账号';
+          toast(
+            out.imap ? 'Microsoft 重新授权成功' : '授权成功，但连接验证没过：' + (out.error || ''),
+            out.imap ? 'success' : 'error'
+          );
+          if (out.imap) closeModal('accountModal');
+        } else {
+          setMsStatus('授权成功，正在保存账号…', 'ok');
+          await saveAccount();
+        }
+        return;
+      }
+      if (st.status === 'error') {
+        setMsStatus(st.error || '授权没有完成', 'err');
+        btn.disabled = false;
+        btn.textContent = isEdit ? '重新登录 Microsoft 账号' : '使用 Microsoft 账号登录';
+        return;
+      }
+    }
+    setMsStatus('等待授权超时，请重试', 'err');
+    btn.disabled = false;
+  } catch (err) {
+    setMsStatus(err.message, 'err');
+    btn.disabled = false;
+    btn.textContent = isEdit ? '重新登录 Microsoft 账号' : '使用 Microsoft 账号登录';
+  }
+}
+
+async function saveMsConfig({ silent = false } = {}) {
+  const clientId = $('#msClientId').value.trim();
+  if (!clientId) {
+    if (!silent) setMsStatus('请填 Azure 应用 ID', 'err');
+    return false;
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) {
+    setMsStatus('应用 ID 应该是一串 GUID（形如 12345678-1234-1234-1234-123456789abc）', 'err');
+    return false;
+  }
+  try {
+    await api('/microsoft/oauth/config', { method: 'POST', body: { clientId } });
+    state.msConfigured = true;
+    $('#msClientId').value = '';
+    $('#msConfigDetails').open = false;
+    setMsStatus('应用 ID 已保存，可以点上面的登录按钮了', 'ok');
+    $('#msLoginBtn').disabled = false;
+    return true;
+  } catch (err) {
+    setMsStatus(err.message, 'err');
+    return false;
+  }
+}
+
 /** 根据已有邮箱反查下拉项（编辑账号时用） */
 function keyForAccount(email, provider) {
   const { domain } = splitEmail(email);
@@ -2170,6 +2312,7 @@ async function saveAccount() {
   const errBox = $('#accountError');
   const isEdit = state.accountMode === 'edit';
   const isGmailOauth = !isEdit && state.provider === 'gmail';
+  const isMsOauth = !isEdit && state.provider === 'outlook';
   const local = $('#accLocal').value.trim();
   const domain = $('#accDomain').value.trim().replace(/^@+/, '');
   const pass = $('#accPass').value;
@@ -2183,6 +2326,8 @@ async function saveAccount() {
     if (!/^[^\s@]+\.[^\s@]+$/.test(domain)) return showAccountError('域名格式看起来不对，例如 qq.com');
     if (isGmailOauth) {
       if (!state.googleAuthorized) return showAccountError('请先点「使用 Google 账号登录」完成授权');
+    } else if (isMsOauth) {
+      if (!state.msAuthorized) return showAccountError('请先点「使用 Microsoft 账号登录」完成授权');
     } else if (!pass) {
       return showAccountError('请填写密码或授权码');
     }
@@ -2239,6 +2384,11 @@ async function saveAccount() {
         // Gmail 走 OAuth：没有密码，令牌在授权回调时已存本机
         payload.authType = 'oauth2';
         payload.loginId = state.googleLoginId;
+        payload.pass = '';
+      } else if (isMsOauth) {
+        // Outlook 同理，走 Microsoft OAuth
+        payload.authType = 'oauth2';
+        payload.loginId = state.msLoginId;
         payload.pass = '';
       }
       const out = await api('/accounts', { method: 'POST', body: payload });
@@ -2765,6 +2915,8 @@ $('#accDomain').addEventListener('input', (e) => {
 // Gmail OAuth：登录按钮与凭据保存
 $('#googleLoginBtn').onclick = startGoogleLogin;
 $('#googleConfigSave').onclick = saveGoogleConfig;
+$('#msLoginBtn').onclick = startMsLogin;
+$('#msConfigSave').onclick = saveMsConfig;
 
 // 切换代理协议时同步默认端口（用户手动改过的端口不会被覆盖）
 const defaultProxyPort = (t) => (t === 'http' || t === 'https' ? 8080 : 1080);

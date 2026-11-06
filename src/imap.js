@@ -1,6 +1,7 @@
 import { ImapFlow } from 'imapflow';
 import nodemailer from 'nodemailer';
 import * as goauth from './goauth.js';
+import * as msauth from './msauth.js';
 import socksPkg from 'socks';
 import { simpleParser } from 'mailparser';
 import { recordContacts } from './store.js';
@@ -35,8 +36,13 @@ const IDLE_MS = 2 * 60 * 1000;
  */
 const MAX_CONN_MS = 10 * 60 * 1000;
 
+/** 按服务商取 OAuth 令牌：Outlook 走 Microsoft，其余 OAuth 账号（Gmail）走 Google */
+async function oauthToken(acc) {
+  return acc.provider === 'outlook' ? msauth.getAccessToken(acc.email) : goauth.getAccessToken(acc.email);
+}
+
 function smtpAuth(acc) {
-  // Gmail 这类 OAuth 账号用 XOAUTH2；密码账号照旧
+  // Gmail / Outlook 这类 OAuth 账号用 XOAUTH2；密码账号照旧
   return acc.authType === 'oauth2'
     ? { type: 'OAuth2', user: acc.username || acc.email, accessToken: acc.oauthAccessToken }
     : { user: acc.username || acc.email, pass: acc.pass };
@@ -85,7 +91,7 @@ async function getEntry(acc, { fresh = false } = {}) {
     if (entry) dropConnection(acc.id);
     // OAuth 账号在每次建立连接前确保令牌新鲜（提前 2 分钟算过期）
     if (acc.authType === 'oauth2') {
-      acc.oauthAccessToken = await goauth.getAccessToken(acc.email);
+      acc.oauthAccessToken = await oauthToken(acc);
     }
     const client = makeClient(acc);
     await client.connect();
@@ -142,6 +148,10 @@ export function normalizeError(err) {
     [/certificate|self signed|CERT_/i, '服务器证书校验失败。若你确认服务器可信，可在账号设置里勾选「忽略证书错误」。'],
     [/Mailbox does not exist|NONEXISTENT/i, '文件夹不存在或已被删除。'],
     [/Message not found|no such message/i, '这封邮件已被移动或删除，请刷新列表。'],
+    [/AUTHENTICATE failed|XOAUTH2|User is authenticated but not connected/i,
+      'OAuth 授权被服务器拒绝：令牌可能已过期或被撤销，请回账号设置点「重新登录」授权一次；若仍失败，确认该邮箱已在网页版开启 IMAP。'],
+    [/AADSTS|invalid_grant|token.*(expired|revoked)/i,
+      '登录授权已失效（可能被撤销或改了密码），请在账号设置里重新登录一次。'],
   ];
   for (const [re, msg] of map) {
     if (re.test(raw)) return new Error(msg);
@@ -711,6 +721,11 @@ async function findSentFolder(client) {
 export async function sendMail(acc, payload) {
   const { to, cc, bcc, subject = '', text = '', html = '', attachments = [], inReplyTo, references } = payload;
   if (!to || !String(to).trim()) throw new Error('收件人不能为空');
+
+  // OAuth 账号：发信前确保拿到有效令牌（从磁盘读出来的账号对象本身不带令牌）
+  if (acc.authType === 'oauth2' && !acc.oauthAccessToken) {
+    acc.oauthAccessToken = await oauthToken(acc);
+  }
 
   const transport = wireSocksProxy(
     nodemailer.createTransport({

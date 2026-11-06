@@ -74,10 +74,10 @@ export const PROVIDERS = {
     domain: 'outlook.com',
     imap: { host: 'outlook.office365.com', port: 993, secure: true },
     smtp: { host: 'smtp-mail.outlook.com', port: 587, secure: false },
-    authType: 'authcode',
-    hint: '微软已逐步停用基础认证，建议使用应用密码；若失败请改用 OAuth 或改用其他邮箱测试。',
+    authType: 'oauth2',
+    hint: '微软已停用密码 / 应用密码登录，改为「使用 Microsoft 账号登录」（OAuth2）。',
     help:
-      '账号 → 安全 → 高级安全选项 → 开启双重验证 → 创建「应用密码」。IMAP 主机 outlook.office365.com:993，SMTP smtp-mail.outlook.com:587（STARTTLS）。注意：微软对个人账户的基础认证（含应用密码）限制较多，若被拒属服务商策略。',
+      '首次使用需要在 Azure 注册一个应用拿 Application (client) ID，教程就在下方。服务器：IMAP outlook.office365.com:993，SMTP smtp-mail.outlook.com:587（STARTTLS）。',
   },
   icloud: {
     id: 'icloud',

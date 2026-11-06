@@ -2086,6 +2086,7 @@ async function startGoogleLogin() {
       const st = await api(`/google/oauth/login/${start.loginId}`);
       if (st.status === 'done') {
         state.googleAuthorized = true;
+        if (!isEdit) applyAuthorizedEmail(st.email);
         if (isEdit) {
           setGoogleStatus('重新授权成功，正在验证连接…', 'ok');
           const out = await api(`/accounts/${state.editingId}/test`, { method: 'POST' });
@@ -2096,6 +2097,7 @@ async function startGoogleLogin() {
         } else {
           setGoogleStatus('授权成功，正在保存账号…', 'ok');
           await saveAccount();
+          reportSaveFailure(setGoogleStatus, btn, '使用 Google 账号登录');
         }
         return;
       }
@@ -2212,6 +2214,7 @@ async function startMsLogin() {
       const st = await api(`/microsoft/oauth/login/${start.loginId}`);
       if (st.status === 'done') {
         state.msAuthorized = true;
+        if (!isEdit) applyAuthorizedEmail(st.email);
         if (isEdit) {
           setMsStatus('重新授权成功，正在验证连接…', 'ok');
           const out = await api(`/accounts/${state.editingId}/test`, { method: 'POST' });
@@ -2225,6 +2228,7 @@ async function startMsLogin() {
         } else {
           setMsStatus('授权成功，正在保存账号…', 'ok');
           await saveAccount();
+          reportSaveFailure(setMsStatus, btn, '使用 Microsoft 账号登录');
         }
         return;
       }
@@ -2413,6 +2417,27 @@ function showAccountError(msg) {
   const box = $('#accountError');
   box.hidden = false;
   box.textContent = msg;
+  // 表单很长，错误提示默认在下方看不见，滚过去免得用户以为卡住了
+  try {
+    box.scrollIntoView({ block: 'nearest' });
+  } catch (_) {}
+}
+
+/** 用授权回调拿到的真实邮箱覆盖表单，避免用户手拼邮箱填错（如 hotmail 写成 outlook.com） */
+function applyAuthorizedEmail(email) {
+  const { local, domain } = splitEmail(String(email || ''));
+  if (!local || !domain) return;
+  if ($('#accLocal')) $('#accLocal').value = local;
+  if ($('#accDomain')) $('#accDomain').value = domain;
+}
+
+/** 保存账号失败时，把红色提示的错误同步到授权状态行，避免界面停在「正在保存…」 */
+function reportSaveFailure(setStatus, btn, idleText) {
+  const box = $('#accountError');
+  if (!box || box.hidden || !box.textContent) return;
+  setStatus(box.textContent, 'err');
+  btn.disabled = false;
+  btn.textContent = idleText;
 }
 
 /* ---------------- 设置 ---------------- */

@@ -132,6 +132,13 @@ export async function withClient(acc, fn, { fresh = false, background = false } 
 export function normalizeError(err) {
   const raw = String(err?.responseText || err?.message || err || '未知错误');
   const map = [
+    /* 微软对较新注册的个人 Outlook/Hotmail 邮箱默认关闭 SMTP 发信认证，个人账号没有自助开关。
+     * 这一条必须排在「Invalid login」之前，否则会被误判成密码错误。 */
+    [/SmtpClientAuthentication is disabled/i,
+      '这个邮箱的「发信」被微软关闭了（535 5.7.139），不是密码或授权出了问题。\n' +
+      '原因：微软对较新注册的个人 Outlook / Hotmail 邮箱默认关闭「SMTP 客户端认证」，而个人账号没有可以自己打开的开关（只有企业管理员能在后台开启），所以第三方客户端无法用它发信。\n' +
+      '注意：收信不受影响（IMAP 是另一个开关），网页版也能正常发信。\n' +
+      '建议：把该账号用作收信，发信时切换到其他账号。'],
     [/Login fail|Account is abnormal|service is not open/i,
       '登录被拒绝：该邮箱可能没有开启 IMAP 服务，或授权码 / 密码不正确。\nQQ 邮箱请在「设置 → 账号」开启 IMAP/SMTP 服务并获取授权码；若反复失败，可能是登录频率被临时限制，稍后再试。'],
     [/authentication failed|invalid credentials|AUTHENTICATIONFAILED|LOGIN failed|Invalid login/i,

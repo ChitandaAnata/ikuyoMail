@@ -42,6 +42,18 @@ public sealed class MainForm : Form
     private Process? _server;
     private string _root = "";
     private bool _ready;
+
+    /// <summary>
+    /// 服务已经退出时置位：托盘菜单的「退出」只让 node 结束，外壳必须跟着退，
+    /// 不能留下一个连不上后端的僵尸窗口（下次启动还会被它拦成「已有实例」）。
+    /// </summary>
+    private bool _forceExit;
+
+    /// <summary>
+    /// 服务是否已经确认就绪。没就绪时进程退出属于「启动失败、换端口重试」，
+    /// 不能当成用户退出把窗口关掉。
+    /// </summary>
+    private bool _serverConfirmed;
     private CoreWebView2Environment? _env;
 
     /// <summary>本机服务实际用的端口（页面、API、打印页都跟着它）</summary>
@@ -221,6 +233,7 @@ public sealed class MainForm : Form
             if (up)
             {
                 _port = port;
+                _serverConfirmed = true;
                 Log($"服务已就绪 port={port}");
                 return true;
             }
@@ -272,9 +285,18 @@ public sealed class MainForm : Form
             CreateNoWindow = true,
         };
         psi.EnvironmentVariables["PORT"] = port.ToString();
+        // 把外壳自己的 pid 交给服务：外壳要是被任务管理器强杀，服务几秒后自己退出，
+        // 不至于留下一个占着端口、界面上却找不到的孤儿进程
+        psi.EnvironmentVariables["IKUYO_PARENT_PID"] = Environment.ProcessId.ToString();
         try
         {
             _server = Process.Start(psi);
+            _serverConfirmed = false;
+            if (_server is not null)
+            {
+                _server.EnableRaisingEvents = true;
+                _server.Exited += OnServerExited;
+            }
             return _server is not null;
         }
         catch (Exception ex)
@@ -301,13 +323,56 @@ public sealed class MainForm : Form
 
     private void StopServer()
     {
-        if (_server is null) return;
+        var proc = _server;
+        if (proc is null) return;
+        _server = null;
         try
         {
-            if (!_server.HasExited) _server.Kill(true);
+            proc.Exited -= OnServerExited;   // 主动收尾时别再让退出事件回头关窗口
+            if (!proc.HasExited) proc.Kill(true);
         }
         catch { }
-        _server = null;
+    }
+
+    /// <summary>
+    /// 本机服务退出（托盘右键「退出」走的就是这条路：node 自己结束，不通知外壳）。
+    /// 这里把窗口一起关掉，保证任务管理器里不会剩下一个点不动的 ikuyoMail.exe。
+    /// </summary>
+    private void OnServerExited(object? sender, EventArgs e)
+    {
+        // 还在起服务（进程闪退 → 准备换端口重试），别把窗口带走
+        if (!_serverConfirmed) return;
+
+        var code = -1;
+        try { code = (sender as Process)?.ExitCode ?? -1; } catch { }
+
+        void Handle()
+        {
+            if (_forceExit) return;
+            _forceExit = true;
+            // 非 0 = 服务是崩溃退出的，不是用户主动退出，提示一句更不容易让人困惑
+            if (code != 0 && Visible)
+            {
+                try
+                {
+                    MessageBox.Show(
+                        this,
+                        "本地邮件服务意外退出，程序需要关闭。\r\n重新打开 ikuyoMail 即可恢复。",
+                        Title,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                }
+                catch { }
+            }
+            Close();
+        }
+
+        try
+        {
+            if (IsHandleCreated) BeginInvoke(new Action(Handle));
+            else Handle();
+        }
+        catch { }
     }
 
     // ---------------------------------------------------------------- 窗口最小尺寸
@@ -376,6 +441,13 @@ public sealed class MainForm : Form
     /// </summary>
     private void OnFormClosing(object? sender, FormClosingEventArgs e)
     {
+        // 服务已经退出（用户从托盘点「退出」）：不管设置是「最小化到托盘」都得真退
+        if (_forceExit)
+        {
+            StopServer();
+            return;
+        }
+
         // 关机 / 注销：不管设置怎么样都要真的退
         if (e.CloseReason == CloseReason.WindowsShutDown)
         {

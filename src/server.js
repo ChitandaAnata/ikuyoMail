@@ -756,3 +756,22 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
   });
 }
 
+
+/* ---------------- 外壳进程守护 ----------------
+ * 由 ikuyoMail.exe 拉起时会带上 IKUYO_PARENT_PID。外壳要是被强杀（任务管理器结束任务、
+ * 崩溃），这里在几秒内自己收尾，免得留下一个占着端口、界面上却找不到的孤儿服务。
+ * 直接用 node / npm start 跑开发版时没有这个变量，不会被误杀。
+ */
+const parentPid = Number(process.env.IKUYO_PARENT_PID || 0);
+if (Number.isInteger(parentPid) && parentPid > 0) {
+  const guard = setInterval(() => {
+    try {
+      process.kill(parentPid, 0); // 只探测存活，不发信号
+    } catch {
+      clearInterval(guard);
+      shutdown('外壳进程已退出');
+    }
+  }, 4000);
+  guard.unref();
+  process.on('exit', () => clearInterval(guard));
+}
